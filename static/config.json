@@ -1,0 +1,15 @@
+{
+    "weather": {
+        "city": "New Delhi",
+        "country": "IN",
+        "units": "metric"
+    },
+    "news": {
+        "country": "in",
+        "language": "en",
+        "page_size": 6
+    },
+    "onenote": {
+        "notebook_name": "My Notebook"
+    }
+}
