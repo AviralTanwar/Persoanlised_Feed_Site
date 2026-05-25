@@ -16,9 +16,8 @@ __pycache__/
 *.pyd
 .Python
 
-# SQLite database (local data, not for repo)
-db/*.db
-db/*.sqlite3
+# SQLite database — entire folder ignored, created automatically on first run
+db/
 
 # Streamlit cache
 .streamlit/
