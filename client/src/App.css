@@ -1,0 +1,165 @@
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.dashboard { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+.dash-header { margin-bottom: 20px; }
+.dash-header h1 { font-size: 22px; font-weight: 700; color: #cdd6f4; }
+
+.grid-top {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.grid-full { margin-bottom: 16px; }
+
+/* ── Widget ─────────────────────────────────────────────────────────────── */
+.widget {
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 12px;
+  padding: 16px;
+}
+.widget h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #cdd6f4; }
+
+/* ── Weather ─────────────────────────────────────────────────────────────── */
+.weather-card { display: flex; flex-direction: column; gap: 8px; }
+.weather-main { display: flex; align-items: center; gap: 12px; }
+.weather-icon { font-size: 2.4rem; }
+.weather-temp { font-size: 2rem; font-weight: 700; }
+.weather-details { color: #a6adc8; font-size: 13px; line-height: 1.6; }
+.weather-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ── News ────────────────────────────────────────────────────────────────── */
+.news-item { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; }
+.news-text { flex: 1; }
+.news-title { font-size: 13px; font-weight: 600; color: #cdd6f4; line-height: 1.4; }
+.news-title:hover { color: #89b4fa; }
+.news-source { display: block; font-size: 11px; color: #6c7086; margin-top: 2px; }
+.news-desc { font-size: 12px; color: #a6adc8; margin-top: 4px; }
+.news-actions { display: flex; flex-direction: column; gap: 4px; }
+
+/* ── Tech News ───────────────────────────────────────────────────────────── */
+.tech-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #313244; }
+.tech-item:last-of-type { border-bottom: none; }
+.tech-text { flex: 1; margin-right: 10px; }
+.tech-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.score-badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+.comment-link { font-size: 11px; color: #6c7086; white-space: nowrap; }
+
+/* ── YouTube / WebPage ───────────────────────────────────────────────────── */
+.yt-select-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.yt-layout { display: grid; grid-template-columns: 1fr 280px; gap: 12px; }
+.yt-frame { width: 100%; height: 400px; border: 1px solid #313244; border-radius: 8px; }
+.wp-layout { display: grid; grid-template-columns: 1fr 280px; gap: 12px; margin-bottom: 12px; }
+.wp-frame { width: 100%; height: 460px; border: 1px solid #313244; border-radius: 8px; background: #fff; }
+
+/* ── Notes Panel ─────────────────────────────────────────────────────────── */
+.notes-panel {
+  background: rgba(17,17,27,.95);
+  border: 1px solid #89b4fa;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+}
+.wp-layout .notes-panel { height: 460px; }
+.notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #89b4fa; }
+.notes-list { flex: 1; overflow-y: auto; margin-bottom: 8px; }
+.note-item { border-left: 3px solid #89b4fa; padding: 6px 8px; margin-bottom: 6px; background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; font-size: 12px; }
+.note-item p { margin: 0; color: #cdd6f4; }
+.note-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+.note-input-row { display: flex; flex-direction: column; gap: 4px; }
+.badge { background: #313244; color: #cdd6f4; font-size: 10px; padding: 1px 5px; border-radius: 10px; margin-left: 4px; }
+
+/* ── Web Page Forms ──────────────────────────────────────────────────────── */
+.wp-forms { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.form-section { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; color: #6c7086; }
+.hl-row { display: flex; gap: 6px; }
+
+/* ── Improvements ────────────────────────────────────────────────────────── */
+.improve-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #313244; }
+.improve-form-row { display: flex; gap: 8px; }
+.improve-list { display: flex; flex-direction: column; gap: 8px; }
+.improve-item { border-left: 3px solid #89b4fa; padding: 10px; background: rgba(255,255,255,.03); border-radius: 0 8px 8px 0; }
+.improve-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.improve-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+/* ── Shared UI ───────────────────────────────────────────────────────────── */
+.input {
+  background: #313244; border: 1px solid #45475a; border-radius: 6px;
+  color: #cdd6f4; padding: 6px 10px; font-size: 13px; width: 100%; outline: none;
+}
+.input:focus { border-color: #89b4fa; }
+
+.textarea {
+  background: #313244; border: 1px solid #45475a; border-radius: 6px;
+  color: #cdd6f4; padding: 6px 10px; font-size: 13px; width: 100%;
+  resize: vertical; outline: none; font-family: inherit;
+}
+.textarea:focus { border-color: #89b4fa; }
+
+.select {
+  background: #313244; border: 1px solid #45475a; border-radius: 6px;
+  color: #cdd6f4; padding: 6px 10px; font-size: 13px; outline: none; cursor: pointer;
+}
+.select.small { padding: 4px 8px; font-size: 12px; }
+
+.btn-primary {
+  background: #89b4fa; color: #11111b; border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-primary:hover { background: #74c7ec; }
+
+.btn-secondary {
+  background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px;
+  padding: 6px 12px; font-size: 13px; cursor: pointer;
+}
+.btn-secondary:hover { border-color: #89b4fa; }
+
+.btn-icon {
+  background: none; border: none; cursor: pointer; font-size: 16px;
+  padding: 2px 4px; border-radius: 4px; color: #cdd6f4;
+}
+.btn-icon:hover { background: #313244; }
+.btn-icon.active { background: #313244; }
+.btn-icon.small { font-size: 13px; }
+
+.btn-link {
+  background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+  border-radius: 6px; padding: 5px 12px; font-size: 12px; white-space: nowrap;
+  text-decoration: none;
+}
+.btn-link:hover { border-color: #89b4fa; text-decoration: none; }
+
+.btn-refresh {
+  background: none; border: 1px solid #313244; border-radius: 6px;
+  color: #6c7086; font-size: 12px; padding: 4px 10px; cursor: pointer;
+  margin-top: 10px;
+}
+.btn-refresh:hover { border-color: #89b4fa; color: #cdd6f4; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.tab {
+  background: #313244; border: 1px solid #45475a; border-radius: 6px;
+  color: #6c7086; font-size: 12px; padding: 4px 12px; cursor: pointer;
+}
+.tab.active { background: #89b4fa; color: #11111b; border-color: #89b4fa; font-weight: 600; }
+
+.muted { color: #6c7086; font-size: 12px; }
+.error { color: #f38ba8; font-size: 13px; }
+
+kbd {
+  background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+  border-radius: 3px; padding: 1px 5px; font-size: 11px; font-family: monospace;
+}
+
+@media (max-width: 1100px) {
+  .grid-top { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .grid-top { grid-template-columns: 1fr; }
+  .yt-layout, .wp-layout { grid-template-columns: 1fr; }
+  .wp-forms { grid-template-columns: 1fr; }
+}

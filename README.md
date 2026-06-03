@@ -183,6 +183,7 @@ The `db/` folder is gitignored — your data stays local.
 - The `db/` folder and `.env` file are gitignored — never committed
 - All personal config lives in `static/` — safe to commit, no secrets
 - Tech News uses the [Hacker News API](https://github.com/HackerNews/API) — no key, always free
+- **Do not use `axios`** for HTTP requests — use the native `fetch` API or another library instead (axios was compromised in a supply chain attack)
 
 ---
 
