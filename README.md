@@ -1,189 +1,145 @@
-# 🚀 Personalised Feed Site — API Explorer Dashboard
+# Personalised Feed Site — API Explorer Dashboard
 
-A personal dashboard built with **Python + Streamlit** that pulls live data from multiple APIs into one place. Designed for daily use — weather, news, YouTube notes, web page annotations, and a personal improvement tracker, all in one dark-themed interface.
+A personal dashboard that pulls live data from multiple APIs into one place. Designed for daily use — weather, news, YouTube notes, web page annotations, and a personal improvement tracker, all in one dark-themed interface.
 
-> **Currently:** Streamlit (Python) · **Next:** Migrating to React + FastAPI
+> **Stack:** React + Node.js (Express) + SQLite
 
 ---
 
-## 📸 What It Looks Like
+## What It Does
 
 | Section | What it does |
 |---|---|
-| 🌤️ Weather | Live weather for multiple cities (tabs) |
-| 📰 National News | Top Indian headlines with like/dislike |
-| 💻 Tech News | Hacker News top stories, score-badged |
-| 📓 OneNote | Fetch and read your OneNote pages |
-| 🎬 YouTube Viewer | Watch videos with a draggable floating notes panel |
-| 🌐 Web Page Viewer | Load any page with notes and highlights |
-| 💡 Improvements | Personal tracker for things you want to improve |
+| Weather | Live weather for multiple cities (tabs) |
+| National News | Top Indian headlines with like/dislike |
+| Tech News | Hacker News top stories, score-badged |
+| YouTube Viewer | Watch videos with a notes panel |
+| Web Page Viewer | Load any page with notes and highlights |
+| Improvements | Personal tracker for things you want to improve |
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend + Backend | Python 3.x + Streamlit |
-| Database | SQLite (local) → CockroachDB (production) |
-| APIs | OpenWeatherMap, NewsAPI, Hacker News, Microsoft Graph (OneNote) |
-| Auth | Microsoft MSAL device-code flow (for OneNote) |
+| Frontend | React 19 + Vite |
+| Backend | Node.js + Express |
+| Database | SQLite (`better-sqlite3`) |
+| HTTP requests | Native `fetch` — no axios |
+| APIs | OpenWeatherMap, NewsAPI, Hacker News (free), Microsoft Graph (OneNote) |
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
-API Explorer Dashboard/
-├── app.py                        # Main entry point
-├── requirements.txt
-├── .env.example                  # Copy to .env and fill in keys
+project/
+├── server/
+│   ├── index.js              # Express entry point (port 3001)
+│   ├── db.js                 # SQLite setup + CRUD
+│   └── routes/               # one file per section
 │
-├── static/                       # Your personal config — edit freely
-│   ├── config.json               # Cities, news country
-│   ├── youtube_videos.json       # Your YouTube video URLs
-│   ├── web_pages.json            # Pages you want to annotate
-│   └── onenote_pages.json        # OneNote page IDs
+├── client/
+│   └── src/
+│       ├── App.jsx
+│       └── components/       # one file per section
 │
-├── components/                   # One file per dashboard section
-│   ├── weather.py
-│   ├── national_news.py
-│   ├── tech_news.py
-│   ├── onenote.py
-│   ├── youtube_viewer.py
-│   ├── webpage_viewer.py
-│   └── improvements.py
+├── db/                       # gitignored — auto-created on first run
+├── static/                   # your personal config — safe to commit
+│   ├── config.json           # cities, news country
+│   ├── youtube_videos.json   # your YouTube video URLs
+│   └── web_pages.json        # pages to annotate
 │
-└── utils/
-    ├── database.py               # SQLite CRUD (interactions, notes, highlights)
-    └── api_helpers.py
+├── .env                      # API keys — never committed
+└── .env.example              # template
 ```
 
 ---
 
-## 🚀 Running Locally
+## Running Locally
 
-### 1. Clone and set up
+### 1. Clone
 
 ```bash
 git clone https://github.com/AviralTanwar/Persoanlised_Feed_Site.git
-cd "Persoanlised_Feed_Site"
-python -m venv venv
-venv\Scripts\activate          # Windows
-pip install -r requirements.txt
+cd Persoanlised_Feed_Site
 ```
 
-### 2. Set up API keys
+### 2. Install dependencies
+
+```bash
+cd server && npm install
+cd ../client && npm install
+```
+
+### 3. Set up API keys
 
 ```bash
 copy .env.example .env
 ```
 
-Open `.env` and fill in:
+Fill in `.env`:
 
 ```env
-OPENWEATHER_API_KEY=your_key    # openweathermap.org → free signup
-NEWS_API_KEY=your_key           # newsapi.org → free signup
-MS_CLIENT_ID=                   # optional — only needed for OneNote
+OPENWEATHER_API_KEY=    # openweathermap.org → free signup
+NEWS_API_KEY=           # newsapi.org → free signup
+MS_CLIENT_ID=           # optional — only for OneNote
 MS_TENANT_ID=common
 ```
 
-### 3. Configure your personal data
+### 4. Configure your data
 
-Edit the files in `static/` to match your preferences:
+Edit `static/config.json` with your cities, `static/youtube_videos.json` with your videos, `static/web_pages.json` with pages to annotate.
 
-**`static/config.json`** — your cities and news country
-```json
-{
-    "weather": [
-        { "city": "Noida", "country": "IN", "units": "metric" },
-        { "city": "Greater Noida", "country": "IN", "units": "metric" }
-    ],
-    "news": { "country": "in", "page_size": 6 }
-}
-```
+### 5. Run
 
-**`static/youtube_videos.json`** — YouTube videos you want on your dashboard
-```json
-[
-    { "title": "Your Video", "url": "https://www.youtube.com/watch?v=VIDEO_ID" }
-]
-```
-
-**`static/web_pages.json`** — pages you want to read and annotate
-```json
-[
-    { "title": "Page Title", "url": "https://example.com" }
-]
-```
-
-### 4. Run
+Two terminals:
 
 ```bash
-streamlit run app.py
-```
+# Terminal 1 — backend
+cd server
+node index.js          # http://localhost:3001
 
-Opens at `http://localhost:8501`
+# Terminal 2 — frontend
+cd client
+npm run dev            # http://localhost:5173
+```
 
 ---
 
-## 🗃️ Database
+## Database
 
-SQLite database is created automatically at `db/dashboard.db` on first run. It stores:
+SQLite at `db/dashboard.db`, created automatically on first server start.
 
 | Table | What it holds |
 |---|---|
 | `interactions` | Like / dislike on every news article |
-| `notes` | Notes linked to YouTube videos or web pages |
-| `highlights` | Text highlights on web pages with colour tags |
-| `improvement_notes` | Personal improvement tracker with priority and status |
+| `notes` | Notes per YouTube video or web page |
+| `highlights` | Text highlights with colour tags |
+| `improvement_notes` | Personal tracker with priority + status |
 
 The `db/` folder is gitignored — your data stays local.
 
 ---
 
-## 🔑 Getting API Keys (Free)
+## Getting API Keys (Free)
 
-| API | Where to get it |
+| API | Where |
 |---|---|
-| OpenWeatherMap | `openweathermap.org` → Sign up → My API Keys (activates in ~10 min) |
-| NewsAPI | `newsapi.org` → Get API Key → verify email |
-| Hacker News | No key needed — fully open API |
-| OneNote | Azure Portal → App Registration → `Notes.ReadWrite` permission |
+| OpenWeatherMap | openweathermap.org → Sign up → My API Keys |
+| NewsAPI | newsapi.org → Get API Key |
+| Hacker News | No key — fully open API |
+| OneNote | Azure Portal → App Registration → `Notes.Read` permission |
 
 ---
 
-## ✨ Features
+## Notes
 
-- **Multi-city weather** — add as many cities as you want in `config.json`, each gets its own tab
-- **Like / Dislike** on every news story — stored in SQLite
-- **Floating draggable notes panel** on YouTube viewer — notes are scoped per video
-- **Web page highlights** — copy text from any page, save with colour tags
-- **Ctrl+Enter** to save notes anywhere on the dashboard
-- **Improvement tracker** — prioritise and track status (Pending / In Progress / Done)
-- All user data in `static/` — nothing hardcoded
-
----
-
-## 🛣️ Roadmap
-
-- [x] Streamlit MVP with all 7 sections
-- [x] SQLite for likes, notes, highlights, improvements
-- [x] Multi-city weather with tabs
-- [ ] **Migrate to React + FastAPI** (in progress)
-- [ ] Deploy backend on Railway / Render
-- [ ] Deploy frontend on Vercel
-- [ ] Switch SQLite → CockroachDB (10 GB free tier)
-- [ ] AI self-analysis widget — insights from your interactions and notes
-
----
-
-## 📝 Notes
-
-- The `db/` folder and `.env` file are gitignored — never committed
-- All personal config lives in `static/` — safe to commit, no secrets
-- Tech News uses the [Hacker News API](https://github.com/HackerNews/API) — no key, always free
-- **Do not use `axios`** for HTTP requests — use the native `fetch` API or another library instead (axios was compromised in a supply chain attack)
+- `.env` and `db/` are gitignored — never committed
+- Do not use `axios` — native `fetch` only (axios had a supply chain attack)
+- All personal config is in `static/` — safe to commit, no secrets
+- See `PROJECT_REFERENCE.md` for the full technical reference (schemas, routes, patterns)
 
 ---
 
