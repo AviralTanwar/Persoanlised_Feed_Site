@@ -3,7 +3,6 @@ import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import useCountUp from '../hooks/useCountUp'
-import useLocalStorage from '../hooks/useLocalStorage'
 import './Weather.css'
 
 const MAX_CITIES = 6
@@ -118,21 +117,47 @@ function WeatherTile({ city, country, removable, onRemove }) {
 }
 
 export default function Weather() {
-  const [config, setConfig]   = useState(null)
-  const [added, setAdded]     = useLocalStorage('weather_added', [])
+  const [cities, setCities]   = useState([])
   const [picking, setPicking] = useState(false)
+  const [adding, setAdding]   = useState(false)
+  const [error, setError]     = useState(null)
 
-  useEffect(() => {
-    fetch('/api/static/config').then(r => r.json()).then(setConfig)
-  }, [])
+  function load() {
+    fetch('/api/weather-cities')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setCities(data) })
+      .catch(() => {})
+  }
 
-  const baseCities = config?.weather ?? []
-  const allCities  = [...baseCities, ...added]
-  const canAdd     = allCities.length < MAX_CITIES
-  const available  = EXTRA_CITIES.filter(e => !allCities.some(c => c.city === e.city))
+  useEffect(() => { load() }, [])
 
-  function addCity(c)    { setAdded(a => [...a, c]); setPicking(false) }
-  function removeCity(n) { setAdded(a => a.filter(c => c.city !== n)) }
+  const canAdd    = cities.length < MAX_CITIES
+  const available = EXTRA_CITIES.filter(e => !cities.some(c => c.city === e.city))
+
+  async function addCity(c) {
+    setError(null)
+    setAdding(true)
+    try {
+      const res  = await fetch('/api/weather-cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: c.city, country: c.country, units: 'metric' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add city')
+      setCities(cs => [...cs, data])
+      setPicking(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  function removeCity(id) {
+    setCities(cs => cs.filter(c => c.id !== id)) // optimistic — DB soft-deletes (sets deleted_at)
+    fetch(`/api/weather-cities/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
 
   return (
     <Card>
@@ -141,7 +166,7 @@ export default function Weather() {
         title="Weather"
         right={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Chip color="var(--peach)" small>{allCities.length} cities</Chip>
+            <Chip color="var(--peach)" small>{cities.length} cities</Chip>
             {canAdd && (
               <button
                 className={`btn-g${picking ? ' on' : ''}`}
@@ -159,11 +184,12 @@ export default function Weather() {
       {picking && (
         <div className="wcity-picker">
           <span className="wcity-picker-lbl">Select a city to add:</span>
+          {error && <span style={{ color: 'var(--red)', fontSize: 11 }}>⚠️ {error}</span>}
           <div className="wcity-picker-grid">
             {available.length === 0
               ? <span style={{ color: 'var(--ov0)', fontSize: 12 }}>No more cities available</span>
               : available.map(c => (
-                  <button key={c.city} className="wpick-btn" onClick={() => addCity(c)}>
+                  <button key={c.city} className="wpick-btn" disabled={adding} onClick={() => addCity(c)}>
                     {c.city}
                   </button>
                 ))
@@ -176,13 +202,13 @@ export default function Weather() {
       )}
 
       <div className="wgrid">
-        {allCities.map(c => (
+        {cities.map(c => (
           <WeatherTile
-            key={c.city}
+            key={c.id}
             city={c.city}
             country={c.country}
-            removable={added.some(a => a.city === c.city)}
-            onRemove={() => removeCity(c.city)}
+            removable={!c.permanent}
+            onRemove={() => removeCity(c.id)}
           />
         ))}
       </div>

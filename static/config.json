@@ -1,14 +1,4 @@
 {
-    "weather": [{
-        "city": "Noida",
-        "country": "IN",
-        "units": "metric"
-    },
-    {
-        "city": "Greater Noida",
-        "country": "IN",
-        "units": "metric"
-    }],
     "news": {
         "country": "in",
         "language": "en",

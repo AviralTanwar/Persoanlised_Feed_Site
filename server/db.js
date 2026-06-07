@@ -58,7 +58,27 @@ db.exec(`
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS weathers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    city TEXT NOT NULL,
+    country TEXT NOT NULL DEFAULT 'IN',
+    units TEXT NOT NULL DEFAULT 'metric',
+    permanent INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL
+  );
 `);
+
+// Seed permanent cities on first run — these used to live in static/config.json
+const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM weathers').get();
+if (weatherCount === 0) {
+  const insertCity = db.prepare(
+    'INSERT INTO weathers (city, country, units, permanent) VALUES (?, ?, ?, 1)'
+  );
+  insertCity.run('Noida', 'IN', 'metric');
+  insertCity.run('Greater Noida', 'IN', 'metric');
+}
 
 // Seed improvements on first run
 const { n } = db.prepare('SELECT COUNT(*) as n FROM improvement_notes').get();
