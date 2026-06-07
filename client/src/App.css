@@ -7,16 +7,16 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(155deg, rgba(30,30,46,.85), rgba(18,18,28,.78));
+  background: var(--glass-pill);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,.1);
+  border: 1px solid var(--glass-pill-border);
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px -8px rgba(0,0,0,.7);
+  box-shadow: var(--shadow-pill);
   transition: all .18s cubic-bezier(.34,1.56,.64,1);
 }
 .tweaks-btn:hover {
@@ -34,7 +34,7 @@
   background: var(--base);
   border: 1px solid var(--s1);
   border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  box-shadow: var(--shadow-pop);
   z-index: 999;
   overflow: hidden;
   animation: slideDown .2s ease;

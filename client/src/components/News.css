@@ -69,11 +69,11 @@
   gap: 8px;
   align-items: flex-start;
   padding: 7px 4px;
-  border-bottom: 1px solid rgba(49,50,68,.5);
+  border-bottom: 1px solid var(--hairline);
   border-radius: 4px;
   transition: background .12s;
 }
-.hn-item:hover   { background: rgba(255,255,255,.025); }
+.hn-item:hover   { background: var(--hover); }
 .hn-item:last-child { border-bottom: none; }
 
 .hn-body { flex: 1; min-width: 0; }

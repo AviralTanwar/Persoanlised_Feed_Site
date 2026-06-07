@@ -7,10 +7,10 @@
   height: 44px;
   padding: 0 16px;
   border-radius: 22px;
-  background: linear-gradient(155deg, rgba(30,30,46,.85), rgba(18,18,28,.78));
+  background: var(--glass-pill);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid rgba(255,255,255,.1);
+  border: 1px solid var(--glass-pill-border);
   color: var(--text2);
   cursor: pointer;
   display: flex;
@@ -20,13 +20,13 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: .4px;
-  box-shadow: 0 8px 24px -8px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.05) inset;
+  box-shadow: var(--shadow-pill), var(--card-inset-hover);
   transition: all .18s cubic-bezier(.34,1.56,.64,1);
 }
 .nav-toggle:hover {
   border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   color: var(--accent);
-  box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 45%, transparent), 0 8px 24px -8px rgba(0,0,0,.7);
+  box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow-pill);
 }
 .nav-toggle:active { transform: scale(.92); }
 
@@ -46,16 +46,16 @@
   height: 44px;
   width: 44px;
   border-radius: 22px;
-  background: linear-gradient(155deg, rgba(30,30,46,.85), rgba(18,18,28,.78));
+  background: var(--glass-pill);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid rgba(255,255,255,.1);
+  border: 1px solid var(--glass-pill-border);
   cursor: pointer;
   font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px -8px rgba(0,0,0,.7);
+  box-shadow: var(--shadow-pill);
   transition: all .18s cubic-bezier(.34,1.56,.64,1);
 }
 .theme-toggle:hover {
@@ -69,7 +69,7 @@
 .nav-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.55);
+  background: var(--scrim);
   z-index: 90;
   opacity: 0;
   pointer-events: none;
@@ -93,7 +93,7 @@
   z-index: 110;
   transform: translateX(-100%);
   transition: transform .28s cubic-bezier(.4,0,.2,1);
-  box-shadow: 8px 0 32px rgba(0,0,0,.4);
+  box-shadow: var(--drawer-shadow);
 }
 .sidenav.open { transform: none; }
 
@@ -131,7 +131,7 @@
   transition: all .15s;
   position: relative;
 }
-.nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.nav-item:hover { background: var(--hover); color: var(--text); }
 .nav-item.on {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);

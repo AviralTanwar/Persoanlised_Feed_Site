@@ -3,7 +3,7 @@
   overflow: hidden;
   border-radius: 22px;
   padding: 1.4rem 1.6rem;
-  background: linear-gradient(155deg, rgba(28,28,42,.72), rgba(16,16,24,.6));
+  background: var(--card-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--card-border);
@@ -46,3 +46,5 @@
 .quote-src { font-size: 11px; color: var(--ov1); font-weight: 500; }
 
 .quote-foot { display: flex; justify-content: flex-end; margin-top: .1rem; }
+.quote-foot .btn-g { color: var(--text); font-weight: 700; }
+.quote-foot .btn-g:hover { color: var(--text); }

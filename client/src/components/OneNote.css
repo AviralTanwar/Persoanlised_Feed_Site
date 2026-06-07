@@ -16,7 +16,7 @@
   transition: all .15s;
   width: 100%;
 }
-.on-item:hover { background: rgba(255,255,255,.05); border-color: var(--s1); }
+.on-item:hover { background: var(--hover-2); border-color: var(--s1); }
 .on-item.on    { background: color-mix(in srgb, var(--mauve) 10%, transparent); border-color: var(--mauve); }
 
 .on-item-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }

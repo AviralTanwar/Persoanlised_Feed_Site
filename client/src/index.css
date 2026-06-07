@@ -36,6 +36,28 @@
   --grid-from:    rgba(7,7,13,.5);
   --grid-to:      rgba(7,7,13,.8);
   --aurora-opacity: 1;
+
+  --glass-pill:        linear-gradient(155deg, rgba(30,30,46,.85), rgba(18,18,28,.78));
+  --glass-pill-border: rgba(255,255,255,.1);
+
+  --shadow-card:       0 18px 40px -24px rgba(0,0,0,.8);
+  --shadow-card-hover: 0 30px 60px -26px rgba(0,0,0,.9);
+  --card-inset:        0 1px 0 rgba(255,255,255,.04) inset;
+  --card-inset-hover:  0 1px 0 rgba(255,255,255,.06) inset;
+  --shadow-pill:       0 8px 24px -8px rgba(0,0,0,.7);
+  --drawer-shadow:     8px 0 32px rgba(0,0,0,.4);
+  --shadow-pop:        0 8px 32px rgba(0,0,0,.6);
+
+  --hero-bg: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent)  22%, #12121c),
+    color-mix(in srgb, var(--accent2) 16%, #0c0c14));
+  --hero-border: rgba(255,255,255,.08);
+  --hero-shadow: 0 24px 60px -30px rgba(0,0,0,.9);
+
+  --scrim:    rgba(0,0,0,.55);
+  --hover:    rgba(255,255,255,.04);
+  --hover-2:  rgba(255,255,255,.05);
+  --hairline: rgba(49,50,68,.5);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -68,6 +90,28 @@ html[data-theme="light"] {
   --grid-from:   rgba(239,241,245,.35);
   --grid-to:     rgba(239,241,245,.55);
   --aurora-opacity: 0.4;
+
+  --glass-pill:        linear-gradient(155deg, rgba(255,255,255,.92), rgba(230,233,239,.82));
+  --glass-pill-border: rgba(0,0,0,.08);
+
+  --shadow-card:       0 12px 30px -18px rgba(108,111,133,.32);
+  --shadow-card-hover: 0 22px 46px -22px rgba(108,111,133,.42);
+  --card-inset:        0 1px 0 rgba(255,255,255,.8) inset;
+  --card-inset-hover:  0 1px 0 rgba(255,255,255,.95) inset;
+  --shadow-pill:       0 8px 22px -10px rgba(108,111,133,.42);
+  --drawer-shadow:     8px 0 32px rgba(108,111,133,.22);
+  --shadow-pop:        0 12px 36px -8px rgba(108,111,133,.4);
+
+  --hero-bg: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent) 78%, #1a1726),
+    color-mix(in srgb, var(--accent) 50%, #1a1726));
+  --hero-border: rgba(255,255,255,.28);
+  --hero-shadow: 0 20px 44px -24px color-mix(in srgb, var(--accent) 50%, rgba(108,111,133,.4));
+
+  --scrim:    rgba(76,79,105,.25);
+  --hover:    rgba(0,0,0,.04);
+  --hover-2:  rgba(0,0,0,.055);
+  --hairline: rgba(0,0,0,.08);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -153,7 +197,7 @@ a:hover { opacity: .8; }
   transform-style: preserve-3d;
   will-change: transform;
   transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .35s, border-color .35s;
-  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px -24px rgba(0,0,0,.8);
+  box-shadow: var(--card-inset), var(--shadow-card);
 }
 
 .card::before {
@@ -179,8 +223,8 @@ a:hover { opacity: .8; }
     translateZ(6px);
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.06) inset,
-    0 30px 60px -26px rgba(0,0,0,.9),
+    var(--card-inset-hover),
+    var(--shadow-card-hover),
     0 0 36px -12px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .card:hover::before { opacity: 1; }

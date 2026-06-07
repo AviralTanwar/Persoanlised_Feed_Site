@@ -3,15 +3,12 @@
   overflow: hidden;
   border-radius: 22px;
   padding: 1.6rem 1.8rem 1.6rem 3.6rem;
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent)  22%, #12121c),
-      color-mix(in srgb, var(--accent2) 16%, #0c0c14));
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--hero-bg);
+  border: 1px solid var(--hero-border);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: 0 24px 60px -30px rgba(0,0,0,.9);
+  box-shadow: var(--hero-shadow);
 }
 
 /* decorative glow blob */
@@ -32,7 +29,7 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent) 85%, white);
+  color: rgba(255,255,255,.88);
   display: flex;
   align-items: center;
   gap: .5rem;

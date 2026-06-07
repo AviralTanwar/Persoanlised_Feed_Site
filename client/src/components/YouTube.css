@@ -19,7 +19,7 @@
   transition: all .15s;
   width: 100%;
 }
-.yt-item:hover { background: rgba(255,255,255,.05); border-color: var(--s1); }
+.yt-item:hover { background: var(--hover-2); border-color: var(--s1); }
 .yt-item.on    { background: color-mix(in srgb, var(--red) 8%, transparent); border-color: var(--red); }
 .yt-item:active { transform: scale(.97); }
 

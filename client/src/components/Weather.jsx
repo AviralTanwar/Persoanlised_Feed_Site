@@ -7,16 +7,18 @@ import './Weather.css'
 
 const MAX_CITIES = 6
 
+// Built entirely from theme tokens (see THEME_COLORS.md) — named accents shift
+// between Mocha/Latte palettes so each tile stays legible whichever theme is active.
 const COND = {
-  Clear:        { bg: 'linear-gradient(145deg,#f9a825,#ffcc02,#ef6c00)', dark: true },
-  Haze:         { bg: 'linear-gradient(145deg,#37474f,#546e7a)',          dark: false },
-  Clouds:       { bg: 'linear-gradient(145deg,#607d8b,#90a4ae)',          dark: false },
-  Rain:         { bg: 'linear-gradient(145deg,#1565c0,#42a5f5)',          dark: false },
-  Drizzle:      { bg: 'linear-gradient(145deg,#1976d2,#64b5f6)',          dark: false },
-  Snow:         { bg: 'linear-gradient(145deg,#b0bec5,#eceff1)',          dark: true  },
-  Thunderstorm: { bg: 'linear-gradient(145deg,#212121,#424242)',          dark: false },
-  Mist:         { bg: 'linear-gradient(145deg,#546e7a,#78909c)',          dark: false },
-  Smoke:        { bg: 'linear-gradient(145deg,#455a64,#607d8b)',          dark: false },
+  Clear:        { bg: 'linear-gradient(145deg, var(--yellow), var(--peach))',  dark: true  },
+  Haze:         { bg: 'linear-gradient(145deg, var(--ov1), var(--s1))',        dark: false },
+  Clouds:       { bg: 'linear-gradient(145deg, var(--sub0), var(--ov0))',      dark: false },
+  Rain:         { bg: 'linear-gradient(145deg, var(--blue), var(--mauve))',    dark: false },
+  Drizzle:      { bg: 'linear-gradient(145deg, var(--teal), var(--blue))',     dark: false },
+  Snow:         { bg: 'linear-gradient(145deg, var(--text), var(--sub0))',     dark: true  },
+  Thunderstorm: { bg: 'linear-gradient(145deg, var(--crust), var(--mauve))',   dark: false },
+  Mist:         { bg: 'linear-gradient(145deg, var(--teal), var(--ov1))',      dark: false },
+  Smoke:        { bg: 'linear-gradient(145deg, var(--s1), var(--ov1))',        dark: false },
 }
 
 const ICONS = {
@@ -54,8 +56,10 @@ function WeatherTile({ city, country, removable, onRemove }) {
   const temp = useCountUp(data?.main?.temp ?? 0)
   const cond  = data?.weather?.[0]?.main ?? 'Clear'
   const style = COND[cond] ?? COND.Clear
-  const tc    = style.dark ? 'rgba(17,17,27,.88)' : '#eef0ff'
-  const dim   = style.dark ? 'rgba(17,17,27,.6)'  : 'rgba(238,240,255,.7)'
+  const tc    = style.dark ? 'var(--crust)' : 'var(--text2)'
+  const dim   = style.dark
+    ? 'color-mix(in srgb, var(--crust) 75%, transparent)'
+    : 'color-mix(in srgb, var(--text2) 75%, transparent)'
 
   function onMouseMove(e) {
     const el = tileRef.current
