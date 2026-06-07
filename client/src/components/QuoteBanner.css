@@ -1,0 +1,48 @@
+.quote-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 1.4rem 1.6rem;
+  background: linear-gradient(155deg, rgba(28,28,42,.72), rgba(16,16,24,.6));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.quote-block { display: flex; flex-direction: column; gap: .45rem; }
+
+.quote-div {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--card-border), transparent);
+}
+
+.quote-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  white-space: nowrap;
+}
+.quote-label.dev { color: var(--accent); }
+.quote-label.mot { color: var(--accent2); }
+
+.quote-txt {
+  font-size: 1.06rem;
+  font-weight: 600;
+  color: var(--text2);
+  line-height: 1.42;
+  font-style: italic;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: opacity .25s;
+}
+
+.quote-src { font-size: 11px; color: var(--ov1); font-weight: 500; }
+
+.quote-foot { display: flex; justify-content: flex-end; margin-top: .1rem; }

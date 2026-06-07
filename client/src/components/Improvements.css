@@ -1,0 +1,85 @@
+.imp-form {
+  background: var(--mantle);
+  border: 1px solid var(--s0);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideDown .2s ease;
+}
+
+.imp-form-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.imp-pri-pills { display: flex; gap: 6px; }
+
+.imp-pri-pill {
+  background: transparent;
+  border: 1px solid var(--pc, var(--s0));
+  color: var(--pc, var(--ov0));
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: .45;
+  transition: opacity .15s, background .15s;
+  text-transform: capitalize;
+}
+.imp-pri-pill:hover, .imp-pri-pill.on {
+  opacity: 1;
+  background: color-mix(in srgb, var(--pc) 15%, transparent);
+}
+
+.imp-filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.imp-count { margin-left: auto; font-size: 11px; color: var(--ov0); }
+
+/* Item card */
+.imp-list { display: flex; flex-direction: column; gap: 8px; }
+
+.imp-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--mantle);
+  border: 1px solid var(--s0);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all .15s;
+}
+.imp-item:hover { border-color: var(--s1); transform: translateY(-1px); }
+
+.imp-bar { width: 4px; flex-shrink: 0; }
+
+.imp-body { flex: 1; padding: 10px 12px; min-width: 0; }
+.imp-title  { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.imp-detail { font-size: 11.5px; color: var(--sub0); line-height: 1.5; margin-bottom: 4px; }
+.imp-date   { font-size: 10px; color: var(--ov0); }
+
+.imp-ctrl {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 10px 10px 0;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.imp-select {
+  background: var(--crust);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  width: auto;
+  resize: none;
+}

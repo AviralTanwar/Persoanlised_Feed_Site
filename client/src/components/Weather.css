@@ -1,0 +1,118 @@
+.wgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Tile */
+.wtile {
+  border-radius: 14px;
+  padding: 1.2rem 1.3rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+  transform:
+    perspective(800px)
+    rotateX(var(--ry, 0deg))
+    rotateY(var(--rx, 0deg));
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s;
+}
+.wtile:hover {
+  transform:
+    perspective(800px)
+    rotateX(var(--ry, 0deg))
+    rotateY(var(--rx, 0deg))
+    translateY(-5px) scale(1.015);
+  box-shadow: 0 16px 40px rgba(0,0,0,.4);
+}
+
+.wtile-loading, .wtile-error {
+  border-radius: 14px;
+  padding: 1.2rem;
+  background: var(--mantle);
+  border: 1px solid var(--s0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  font-size: 13px;
+  color: var(--ov0);
+}
+
+.wtile-rm {
+  position: absolute;
+  top: .7rem; right: .7rem;
+  background: rgba(0,0,0,.25);
+  border: none;
+  color: inherit;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.wtile:hover .wtile-rm { opacity: .7; }
+.wtile-rm:hover { opacity: 1 !important; background: rgba(0,0,0,.45); }
+
+.wtile-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.wtile-city { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.wtile-sub  { font-size: 11px; font-weight: 600; margin-top: 2px; }
+.wtile-ico  { font-size: 2.6rem; filter: drop-shadow(0 2px 6px rgba(0,0,0,.3)); line-height: 1; }
+
+.wtile-temp {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: .9rem;
+}
+.wtile-temp span { font-size: 1.3rem; }
+
+.wtile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .8rem; }
+.wtile-stat  { display: flex; flex-direction: column; font-size: 11px; }
+.wtile-val   { font-size: 14px; font-weight: 700; margin-top: 1px; }
+
+/* Add-city tile */
+.wadd {
+  border: 1.5px dashed var(--s1);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 200px;
+  cursor: pointer;
+  color: var(--ov0);
+  transition: all .18s;
+  background: rgba(255,255,255,.012);
+  padding: 1rem;
+}
+.wadd:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+
+.wadd-ico { font-size: 2rem; font-weight: 300; }
+.wadd-lbl { font-size: 13px; font-weight: 600; }
+.wadd-sub { font-size: 11px; opacity: .7; }
+
+.wpick { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.wpick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+.wpick-btn {
+  background: var(--mantle);
+  border: 1px solid var(--s0);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+}
+.wpick-btn:hover { border-color: var(--accent); color: var(--accent); }

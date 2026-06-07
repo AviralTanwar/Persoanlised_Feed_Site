@@ -1,37 +1,50 @@
-# Environment variables — never commit secrets
+# ─── Secrets ───────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
 
-# Virtual environment
+# ─── Security folder (API auth, tokens, credentials) ───────
+security/
+
+# ─── Node ───────────────────────────────────────────────────
+node_modules/
+server/node_modules/
+client/node_modules/
+server/db/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Build output ───────────────────────────────────────────
+client/dist/
+client/.vite/
+
+# ─── Python (legacy Streamlit app) ──────────────────────────
 venv/
 .venv/
 env/
 ENV/
-
-# Python cache
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 .Python
-
-# SQLite database — entire folder ignored, created automatically on first run
-db/
-
-# Streamlit cache
 .streamlit/
 
-# OS files
+# ─── SQLite (root-level Python DB) ──────────────────────────
+db/
+
+# ─── OS ─────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# IDE
+# ─── IDE ────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs
+# ─── Logs ───────────────────────────────────────────────────
 *.log

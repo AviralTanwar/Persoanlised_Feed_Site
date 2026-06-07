@@ -1,10 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <title>API Explorer Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Apply saved theme before first paint to prevent flash
+      try {
+        const t = JSON.parse(localStorage.getItem('theme') || '"dark"');
+        document.documentElement.setAttribute('data-theme', t);
+        const tweaks = JSON.parse(localStorage.getItem('tweaks') || '{}');
+        if (tweaks.accent) document.documentElement.style.setProperty('--accent', tweaks.accent);
+        if (tweaks.density === 'comfortable') {
+          document.documentElement.style.setProperty('--cp-v', '1.2rem');
+          document.documentElement.style.setProperty('--cp-h', '1.4rem');
+        }
+      } catch {}
+      // Arm scroll-reveal only when tab is visible at load
+      if (document.visibilityState === 'visible') {
+        document.documentElement.classList.add('js-anim');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,7 +1,17 @@
 [
-    {
-        "title": "Sample Video — replace with yours",
-        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "description": "Edit this file to add your YouTube videos"
-    }
+  {
+    "title": "React in 100 Seconds",
+    "url": "https://www.youtube.com/embed/Tn6-PIqc4UM",
+    "channel": "Fireship"
+  },
+  {
+    "title": "Python in 100 Seconds",
+    "url": "https://www.youtube.com/embed/x7X9w_GIm1s",
+    "channel": "Fireship"
+  },
+  {
+    "title": "FastAPI in 100 Seconds",
+    "url": "https://www.youtube.com/embed/iWS9ogMPOI0",
+    "channel": "Fireship"
+  }
 ]

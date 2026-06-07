@@ -1,16 +1,16 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "API Explorer Dashboard — Express server",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node --watch index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.16.0",
     "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

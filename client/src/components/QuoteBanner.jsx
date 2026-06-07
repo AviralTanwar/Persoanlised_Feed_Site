@@ -1,0 +1,79 @@
+import { useState, useEffect } from 'react'
+import './QuoteBanner.css'
+
+const MOT_FALLBACK = [
+  { author: 'Steve Jobs',       quote: 'Innovation distinguishes between a leader and a follower.' },
+  { author: 'Peter Drucker',    quote: 'The best way to predict the future is to create it.' },
+  { author: 'Confucius',        quote: 'It does not matter how slowly you go as long as you do not stop.' },
+  { author: 'Albert Einstein',  quote: 'A person who never made a mistake never tried anything new.' },
+  { author: 'Aristotle',        quote: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.' },
+]
+
+async function fetchMotivation() {
+  try {
+    const res = await fetch('https://motivational-spark-api.vercel.app/api/quotes/random', { cache: 'no-store' })
+    if (!res.ok) throw new Error()
+    const d = await res.json()
+    if (d?.quote) return { author: d.author || 'Unknown', quote: d.quote }
+    throw new Error()
+  } catch {
+    return MOT_FALLBACK[Math.floor(Math.random() * MOT_FALLBACK.length)]
+  }
+}
+
+export default function QuoteBanner({ excuses }) {
+  const [excuseIdx, setExcuseIdx] = useState(() => Math.floor(Math.random() * (excuses?.length || 1)))
+  const [excuseFade, setExcuseFade] = useState(true)
+  const [quote, setQuote] = useState(null)
+  const [quoteFade, setQuoteFade] = useState(true)
+  const [loading, setLoading] = useState(true)
+
+  async function loadQuote() {
+    const q = await fetchMotivation()
+    setQuote(q)
+    setLoading(false)
+    setQuoteFade(true)
+  }
+
+  function shuffle() {
+    setExcuseFade(false)
+    setQuoteFade(false)
+    setTimeout(() => {
+      setExcuseIdx(i => ((i + 1) % (excuses?.length || 1)))
+      setExcuseFade(true)
+    }, 200)
+    loadQuote()
+  }
+
+  useEffect(() => { loadQuote() }, [])
+  useEffect(() => {
+    const id = setInterval(shuffle, 12000)
+    return () => clearInterval(id)
+  }, [excuses])
+
+  const excuse = excuses?.[excuseIdx] ?? '…'
+
+  return (
+    <div className="quote-card">
+      <div className="quote-block">
+        <div className="quote-label dev">⚡ Developer Excuse</div>
+        <div className="quote-txt" style={{ opacity: excuseFade ? 1 : 0 }}>"{excuse}"</div>
+        <div className="quote-src">— via developerexcuses.com</div>
+      </div>
+
+      <div className="quote-div" />
+
+      <div className="quote-block">
+        <div className="quote-label mot">✦ Motivational Spark</div>
+        <div className="quote-txt" style={{ opacity: (quoteFade && !loading) ? 1 : 0.35 }}>
+          {loading && !quote ? 'Summoning some motivation…' : `"${quote?.quote ?? ''}"`}
+        </div>
+        <div className="quote-src">— {quote?.author ?? '…'}</div>
+      </div>
+
+      <div className="quote-foot">
+        <button className="btn-g" onClick={shuffle}>🎲 Shuffle both</button>
+      </div>
+    </div>
+  )
+}

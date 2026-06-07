@@ -1,0 +1,97 @@
+/* ── National News ── */
+.news-list { display: flex; flex-direction: column; }
+
+.news-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--s0);
+  animation: fadeUp .35s ease both;
+  animation-delay: var(--d, 0ms);
+}
+.news-item:last-child { border-bottom: none; }
+
+.news-body   { flex: 1; min-width: 0; cursor: pointer; }
+.news-title  { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.45; margin-bottom: 4px; transition: color .15s; }
+.news-body:hover .news-title { color: var(--accent); }
+
+.news-meta {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--ov0);
+  flex-wrap: wrap;
+}
+.news-toggle { color: var(--blue); font-size: 10px; }
+.dot { opacity: .35; }
+
+.news-desc-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .42s cubic-bezier(.22,1,.36,1);
+}
+.news-desc-wrap.open { grid-template-rows: 1fr; }
+.news-desc {
+  font-size: 12px;
+  color: var(--sub0);
+  line-height: 1.6;
+  overflow: hidden;
+  min-height: 0;
+  padding-top: 0;
+  transition: padding-top .42s;
+}
+.news-desc-wrap.open .news-desc { padding-top: 8px; }
+
+.news-actions { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+
+/* ── Hacker News ── */
+.hn-list { max-height: 590px; overflow-y: auto; padding-right: 2px; }
+
+.hn-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(49,50,68,.5);
+  border-radius: 4px;
+  transition: background .12s;
+}
+.hn-item:hover   { background: rgba(255,255,255,.025); }
+.hn-item:last-child { border-bottom: none; }
+
+.hn-body { flex: 1; min-width: 0; }
+.hn-row  { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 3px; }
+
+.hn-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  letter-spacing: -.3px;
+  white-space: nowrap;
+}
+
+.hn-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  line-height: 1.4;
+  transition: color .15s;
+}
+.hn-title:hover { color: var(--accent); }
+
+.hn-meta {
+  font-size: 10.5px;
+  color: var(--ov0);
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.hn-actions { display: flex; gap: 4px; flex-shrink: 0; padding-top: 2px; }

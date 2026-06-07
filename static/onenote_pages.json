@@ -1,3 +1,30 @@
-{
-    "pages": []
-}
+[
+  {
+    "id": "on1",
+    "notebook": "Dev Notes",
+    "modified": "2026-06-07",
+    "title": "FastAPI Architecture Notes",
+    "body": "## FastAPI Architecture\n\n### Key Concepts\n- Async by default with Python asyncio\n- **Pydantic** models for request/response validation\n- Dependency injection via `Depends()`\n- OpenAPI docs auto-generated at `/docs`\n\n### Recommended Structure\n```\napp/\n├── main.py\n├── routers/\n├── models/\n└── dependencies.py\n```\n\n### Useful Patterns\n- Use `APIRouter` to split routes by feature\n- Background tasks via `BackgroundTasks`\n- Lifespan events replace deprecated `on_startup`"
+  },
+  {
+    "id": "on2",
+    "notebook": "Dev Notes",
+    "modified": "2026-06-05",
+    "title": "React 19 — Key Changes",
+    "body": "## React 19 Changes\n\n- **Server Actions** are now stable\n- `use()` hook for Promises and Context\n- New compiler (React Forget) auto-memoises components\n- `<form action={serverFn}>` native support\n- Improved Suspense boundaries + streaming\n\n### Migration Notes\n- `ReactDOM.render` fully removed — use `createRoot`\n- `useFormState` → `useActionState`\n- Ref as prop (no forwardRef needed)\n- Improved error messages in dev mode"
+  },
+  {
+    "id": "on3",
+    "notebook": "Interview Prep",
+    "modified": "2026-06-01",
+    "title": "System Design: URL Shortener",
+    "body": "## URL Shortener Design\n\n### Scale Requirements\n- 100M new URLs / day (write)\n- 10B redirects / day (100:1 read ratio)\n\n### Key Decisions\n- **Base62** encoding → 7-char IDs (~3.5 trillion combos)\n- **Cassandra** for persistence (high write throughput)\n- **Redis** hot cache with TTL for popular URLs\n- **CDN** edge nodes for static redirect rules\n\n### Flow\n- Write: hash URL → check collision → store → return short code\n- Read: lookup cache → fallback to DB → 301 redirect"
+  },
+  {
+    "id": "on4",
+    "notebook": "Personal",
+    "modified": "2026-05-28",
+    "title": "Books Reading List 2026",
+    "body": "## 2026 Reading List\n\n✅ The Pragmatic Programmer\n✅ Clean Code — R.C. Martin\n✅ The Phoenix Project\n📖 Designing Data-Intensive Applications (ch.7 / 12)\n⏳ Staff Engineer — Will Larson\n⏳ A Philosophy of Software Design\n\n### Notes\n- DDIA chapter 7 covers transactions and isolation levels\n- Read chapter 9 before starting distributed systems work\n- Staff Engineer is short — can finish in a weekend"
+  }
+]

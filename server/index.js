@@ -3,6 +3,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const weatherRouter = require('./routes/weather');
+const newsRouter = require('./routes/news');
+const hnRouter = require('./routes/hn');
+const staticRouter = require('./routes/staticData');
+const improvementsRouter = require('./routes/improvements');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -11,6 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/weather', weatherRouter);
+app.use('/api/news', newsRouter);
+app.use('/api/hn', hnRouter);
+app.use('/api/static', staticRouter);
+app.use('/api/improvements', improvementsRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
