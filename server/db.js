@@ -38,6 +38,26 @@ db.exec(`
     status TEXT CHECK(status IN ('pending', 'in_progress', 'done')) DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS news_interactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    source TEXT DEFAULT '',
+    url TEXT DEFAULT '',
+    reaction TEXT CHECK(reaction IN ('like', 'dislike')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS web_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    page_id TEXT NOT NULL,
+    page_title TEXT DEFAULT '',
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed improvements on first run

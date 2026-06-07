@@ -1,3 +1,18 @@
+/* ── Error + retry ── */
+.news-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+
 /* ── National News ── */
 .news-list { display: flex; flex-direction: column; }
 

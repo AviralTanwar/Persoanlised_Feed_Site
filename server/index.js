@@ -6,7 +6,10 @@ const weatherRouter = require('./routes/weather');
 const newsRouter = require('./routes/news');
 const hnRouter = require('./routes/hn');
 const staticRouter = require('./routes/staticData');
-const improvementsRouter = require('./routes/improvements');
+const improvementsRouter    = require('./routes/improvements');
+const newsInteractionsRouter = require('./routes/newsInteractions');
+const webNotesRouter         = require('./routes/webNotes');
+const quotesRouter           = require('./routes/quotes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +22,9 @@ app.use('/api/news', newsRouter);
 app.use('/api/hn', hnRouter);
 app.use('/api/static', staticRouter);
 app.use('/api/improvements', improvementsRouter);
+app.use('/api/reactions',   newsInteractionsRouter);
+app.use('/api/web-notes',   webNotesRouter);
+app.use('/api/quotes',      quotesRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

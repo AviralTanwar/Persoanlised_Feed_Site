@@ -9,6 +9,7 @@ import NationalNews from './components/NationalNews'
 import TechNews     from './components/TechNews'
 import OneNote      from './components/OneNote'
 import YouTube      from './components/YouTube'
+import WebPages     from './components/WebPages'
 import Improvements from './components/Improvements'
 
 import './App.css'
@@ -195,6 +196,11 @@ export default function App() {
         {/* YouTube */}
         <section id="youtube" className="sec reveal" ref={setRef('youtube')}>
           <YouTube />
+        </section>
+
+        {/* Web Pages */}
+        <section id="webpages" className="sec reveal" ref={setRef('webpages')}>
+          <WebPages />
         </section>
 
         {/* Improvements */}

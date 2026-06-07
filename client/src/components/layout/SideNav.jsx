@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { id: 'tech',         icon: '💻', label: 'Tech News' },
   { id: 'notes',        icon: '📓', label: 'OneNote' },
   { id: 'youtube',      icon: '🎬', label: 'YouTube' },
+  { id: 'webpages',     icon: '🌐', label: 'Web Pages' },
   { id: 'improvements', icon: '💡', label: 'Improvements' },
 ]
 

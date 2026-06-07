@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
-import useLocalStorage from '../hooks/useLocalStorage'
 import './News.css'
 
 function scoreColor(s) {
@@ -13,19 +12,53 @@ function scoreColor(s) {
 }
 
 export default function TechNews() {
-  const [stories, setStories]   = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [reactions, setReactions] = useLocalStorage('hn_rx', {})
+  const [stories, setStories]     = useState([])
+  const [reactions, setReactions] = useState({})
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
 
-  useEffect(() => {
+  function load() {
+    setLoading(true)
+    setError(null)
+
+    // Stories are critical — load independently
     fetch('/api/hn')
       .then(r => r.json())
-      .then(setStories)
+      .then(data => {
+        if (Array.isArray(data)) setStories(data)
+        else throw new Error(data.error || 'Bad response from /api/hn')
+      })
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
 
-  function react(id, type) {
-    setReactions(r => ({ ...r, [id]: r[id] === type ? null : type }))
+    // Reactions non-critical
+    fetch('/api/reactions')
+      .then(r => r.json())
+      .then(data => { if (data && typeof data === 'object') setReactions(data) })
+      .catch(() => {})
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function react(story, type) {
+    const id      = String(story.id)
+    const current = reactions[id]?.reaction
+    const next    = current === type ? null : type
+
+    setReactions(r => ({ ...r, [id]: { ...r[id], reaction: next } }))
+
+    fetch('/api/reactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        article_id:  id,
+        title:       story.title,
+        description: '',
+        source:      'Hacker News',
+        url:         story.url,
+        reaction:    next,
+      }),
+    }).catch(() => {})
   }
 
   return (
@@ -39,28 +72,33 @@ export default function TechNews() {
           </a>
         }
       />
-      {loading && <p className="empty-msg">Loading…</p>}
+
+      {loading && <p className="empty-msg">Fetching top stories…</p>}
+
+      {error && (
+        <div className="news-error">
+          <span>⚠️ {error}</span>
+          <button className="btn-g" style={{ fontSize: 11 }} onClick={load}>Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && stories.length === 0 && (
+        <p className="empty-msg">No stories found.</p>
+      )}
+
       <div className="hn-list">
         {stories.map(s => {
-          const rx  = reactions[s.id]
+          const id  = String(s.id)
+          const rx  = reactions[id]?.reaction
           const col = scoreColor(s.score)
-          const darkBadge = s.score >= 100
           return (
             <div key={s.id} className="hn-item">
               <div className="hn-body">
                 <div className="hn-row">
-                  <span
-                    className="hn-score"
-                    style={{
-                      background: col,
-                      color: darkBadge ? 'var(--crust)' : 'var(--text)',
-                    }}
-                  >
+                  <span className="hn-score" style={{ background: col, color: s.score >= 100 ? 'var(--crust)' : 'var(--text)' }}>
                     ▲ {s.score}
                   </span>
-                  <a href={s.url} target="_blank" rel="noreferrer" className="hn-title">
-                    {s.title}
-                  </a>
+                  <a href={s.url} target="_blank" rel="noreferrer" className="hn-title">{s.title}</a>
                 </div>
                 <div className="hn-meta">
                   <span>by {s.by}</span>
@@ -69,12 +107,8 @@ export default function TechNews() {
                 </div>
               </div>
               <div className="hn-actions">
-                <button className={`rb sm${rx === 'like' ? ' liked' : ''}`} onClick={() => react(s.id, 'like')}>
-                  {rx === 'like' ? '👍' : '👍'}
-                </button>
-                <button className={`rb sm${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(s.id, 'dislike')}>
-                  {rx === 'dislike' ? '👎' : '👎'}
-                </button>
+                <button className={`rb sm${rx === 'like'    ? ' liked'    : ''}`} onClick={() => react(s, 'like')}>👍</button>
+                <button className={`rb sm${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(s, 'dislike')}>👎</button>
               </div>
             </div>
           )

@@ -9,9 +9,10 @@ const MOT_FALLBACK = [
   { author: 'Aristotle',        quote: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.' },
 ]
 
+// Proxied through Express so the URL stays in server/.env (never in the bundle)
 async function fetchMotivation() {
   try {
-    const res = await fetch('https://motivational-spark-api.vercel.app/api/quotes/random', { cache: 'no-store' })
+    const res = await fetch('/api/quotes')
     if (!res.ok) throw new Error()
     const d = await res.json()
     if (d?.quote) return { author: d.author || 'Unknown', quote: d.quote }

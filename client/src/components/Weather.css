@@ -1,6 +1,7 @@
 .wgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* auto-fit collapses empty tracks — tiles always stretch to fill the full width */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
@@ -80,39 +81,31 @@
 .wtile-stat  { display: flex; flex-direction: column; font-size: 11px; }
 .wtile-val   { font-size: 14px; font-weight: 700; margin-top: 1px; }
 
-/* Add-city tile */
-.wadd {
-  border: 1.5px dashed var(--s1);
-  border-radius: 14px;
+/* City picker — inline below header */
+.wcity-picker {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  min-height: 200px;
-  cursor: pointer;
-  color: var(--ov0);
-  transition: all .18s;
-  background: rgba(255,255,255,.012);
-  padding: 1rem;
-}
-.wadd:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-
-.wadd-ico { font-size: 2rem; font-weight: 300; }
-.wadd-lbl { font-size: 13px; font-weight: 600; }
-.wadd-sub { font-size: 11px; opacity: .7; }
-
-.wpick { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.wpick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
-.wpick-btn {
+  gap: 8px;
   background: var(--mantle);
+  border: 1px solid var(--s0);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  animation: slideDown .18s ease;
+}
+.wcity-picker-lbl  { font-size: 11px; color: var(--ov0); font-weight: 600; }
+.wcity-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+
+.wpick-btn {
+  background: var(--crust);
   border: 1px solid var(--s0);
   color: var(--text);
   padding: 6px 8px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-family: inherit;
   cursor: pointer;
   transition: all .15s;
+  text-align: center;
 }
-.wpick-btn:hover { border-color: var(--accent); color: var(--accent); }
+.wpick-btn:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
