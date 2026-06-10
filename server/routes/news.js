@@ -9,6 +9,29 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+// Strip AMP paths and common tracking params, return canonical article URL.
+// Falls back to a Google News search if the URL has no article path.
+function canonicalUrl(rawUrl, title) {
+  if (!rawUrl) return `https://news.google.com/search?q=${encodeURIComponent(title)}`;
+  try {
+    const u = new URL(rawUrl);
+    // Remove AMP segments
+    u.pathname = u.pathname
+      .replace(/\/amp(\/|$)/i, '$1')
+      .replace(/\.amp\.html$/i, '.html');
+    // Strip tracking query params
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term',
+     'ref','source','referrer','ncid','cid'].forEach(p => u.searchParams.delete(p));
+    // If path is just "/" the URL is a homepage — fall back to search
+    if (u.pathname === '/') {
+      return `https://news.google.com/search?q=${encodeURIComponent(title)}`;
+    }
+    return u.toString();
+  } catch {
+    return `https://news.google.com/search?q=${encodeURIComponent(title)}`;
+  }
+}
+
 router.get('/', async (req, res) => {
   const key = process.env.NEWS_API_KEY;
   if (!key) return res.status(500).json({ error: 'NEWS_API_KEY not configured' });
@@ -26,14 +49,17 @@ router.get('/', async (req, res) => {
     }
 
     const articles = (data.articles || [])
-      .map((a, i) => ({
-        id:   a.url || `n${i}`,
-        title: a.title?.replace(/ - [^-]+$/, '') || '',
-        src:  a.source?.name || 'Unknown',
-        desc: a.description || a.content?.slice(0, 200) || '',
-        time: timeAgo(a.publishedAt),
-        url:  a.url || '',
-      }))
+      .map((a, i) => {
+        const title = a.title?.replace(/ - [^-]+$/, '') || '';
+        return {
+          id:   a.url || `n${i}`,
+          title,
+          src:  a.source?.name || 'Unknown',
+          desc: a.description || a.content?.slice(0, 200) || '',
+          time: timeAgo(a.publishedAt),
+          url:  canonicalUrl(a.url, title),
+        };
+      })
       .filter(a => a.title && a.title !== '[Removed]');
 
     res.json(articles);
