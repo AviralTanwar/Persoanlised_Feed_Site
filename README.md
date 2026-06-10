@@ -1,20 +1,21 @@
-# 🚀 API Explorer Dashboard
+# API Explorer Dashboard
 
-A personal mission-control dashboard: live weather, national + tech news, OneNote reader, YouTube viewer with per-video notes, and an improvements tracker. Glass UI with animated aurora background, dark/light theme, and 3D hover effects.
+A personal mission-control dashboard: year progress KPI, live weather, national + tech news, OneNote reader, YouTube viewer with per-video notes, and an improvements tracker. Glass UI with animated aurora background, dark/light theme, and 3D hover effects.
 
-**Stack:** React 19 + Vite · Express + better-sqlite3 · OpenWeatherMap + NewsAPI + Hacker News
+**Stack:** React 19 + Vite · Express + better-sqlite3 · OpenWeatherMap + NewsAPI
 
 > **Do not use `axios`** — use native `fetch` instead. Axios was compromised in a supply chain attack.
 
 ---
 
-## 🖥️ Features
+## Features
 
 | Section | What it does |
 |---|---|
-| 🌤️ Weather | Live multi-city tiles with condition gradients and 3D hover tilt |
-| 📰 National News | Top Indian headlines — expandable summaries, like/dislike |
-| 💻 Tech News | Hacker News top stories with colour-coded score badges |
+| 📅 Year KPI | Days left in the year + progress bar with colour-coded urgency |
+| 🌤️ Weather | Live multi-city tiles with condition gradients and 3D hover tilt. Cities managed via SQLite (add/remove up to 6, permanent cities cannot be removed) |
+| 📰 National News | Top Indian headlines via NewsAPI — expandable summaries, like/dislike |
+| 💻 Tech News | Global technology headlines via NewsAPI — like/dislike |
 | 📓 OneNote | Sidebar + Markdown reader (edit `static/onenote_pages.json`) |
 | 🎬 YouTube | Playlist + iframe embed + per-video timestamped notes |
 | 💡 Improvements | Full CRUD goal tracker stored in SQLite |
@@ -23,7 +24,7 @@ A personal mission-control dashboard: live weather, national + tech news, OneNot
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -31,11 +32,11 @@ A personal mission-control dashboard: live weather, national + tech news, OneNot
 | Backend | Node.js · Express 5 |
 | Database | better-sqlite3 (local at `server/db/dashboard.db`) |
 | HTTP | Native `fetch` — no axios |
-| APIs | OpenWeatherMap · NewsAPI · Hacker News Firebase API |
+| APIs | OpenWeatherMap · NewsAPI (national headlines + technology category) |
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 API Explorer Dashboard/
@@ -51,11 +52,12 @@ API Explorer Dashboard/
 │   │   └── components/
 │   │       ├── shared/          # Card (3D glass), Chip, SectionHeader
 │   │       ├── layout/          # SideNav (drawer, theme toggle, scroll-spy)
+│   │       ├── YearKPI.jsx      # Days-left-in-year KPI bar (top of page)
 │   │       ├── Hero.jsx         # Live clock + greeting
 │   │       ├── QuoteBanner.jsx  # Developer excuses + motivational quotes
-│   │       ├── Weather.jsx      # Tiles + add/remove cities
-│   │       ├── NationalNews.jsx
-│   │       ├── TechNews.jsx
+│   │       ├── Weather.jsx      # Tiles + add/remove cities (SQLite-backed)
+│   │       ├── NationalNews.jsx # NewsAPI India headlines
+│   │       ├── TechNews.jsx     # NewsAPI technology headlines
 │   │       ├── OneNote.jsx      # Sidebar + Markdown renderer
 │   │       ├── YouTube.jsx      # Playlist + iframe + notes
 │   │       └── Improvements.jsx # Full CRUD with SQLite backend
@@ -63,21 +65,25 @@ API Explorer Dashboard/
 │
 ├── server/                      # Express API
 │   ├── index.js
-│   ├── db.js                    # better-sqlite3 setup + seed improvements
+│   ├── db.js                    # better-sqlite3 setup + schema + seeds
 │   └── routes/
-│       ├── weather.js           # GET /api/weather
-│       ├── news.js              # GET /api/news  (NewsAPI with mock fallback)
-│       ├── hn.js                # GET /api/hn    (Hacker News)
-│       ├── staticData.js        # GET /api/static/:key → serves static/*.json
-│       └── improvements.js      # GET/POST/PATCH/DELETE /api/improvements
+│       ├── weather.js           # GET /api/weather        (OpenWeatherMap)
+│       ├── weatherCities.js     # GET/POST/DELETE /api/weather-cities (SQLite)
+│       ├── news.js              # GET /api/news           (NewsAPI — country=in)
+│       ├── hn.js                # GET /api/hn             (NewsAPI — category=technology)
+│       ├── newsInteractions.js  # GET/POST /api/reactions (SQLite)
+│       ├── staticData.js        # GET /api/static/:key    (serves static/*.json)
+│       ├── webNotes.js          # GET/POST /api/web-notes (SQLite)
+│       ├── improvements.js      # GET/POST/PATCH/DELETE /api/improvements (SQLite)
+│       └── quotes.js            # GET /api/quotes
 │
 ├── static/                      # Edit these to personalise your dashboard
-│   ├── config.json              # Cities, news country
+│   ├── config.json              # News country, misc config
 │   ├── youtube_videos.json      # Your YouTube embed URLs
 │   ├── onenote_pages.json       # Your notes (Markdown supported)
 │   └── excuses.json             # Programmer excuses list
 │
-├── security/                    # 🔒 GITIGNORED — store any auth files here
+├── security/                    # GITIGNORED — store any auth files here
 │
 ├── .env.example                 # Copy to server/.env
 └── README.md
@@ -85,7 +91,7 @@ API Explorer Dashboard/
 
 ---
 
-## 🚀 Running Locally
+## Running Locally
 
 You need **two terminals** open simultaneously.
 
@@ -109,30 +115,22 @@ OPENWEATHER_API_KEY=your_key    # openweathermap.org → free signup
 NEWS_API_KEY=your_key           # newsapi.org → free (dev/localhost only)
 ```
 
-> NewsAPI free tier works from localhost only. On production, use a paid plan or a different news source. If no key is set, the server returns mock news automatically.
+> NewsAPI free tier works from localhost only. On production, use a paid plan or a different news source. If no key is set, both `/api/news` and `/api/hn` return built-in mock data automatically.
 
 ### 3. Customise your data
 
-Edit files in `static/` to personalise your dashboard:
+**Weather cities** are managed at runtime via the dashboard UI (Add / Remove on the Weather tile). Permanent cities (seeded on first run) cannot be removed. To change the permanent seed cities, edit `server/db.js`.
 
-**`static/config.json`** — your cities:
-```json
-{
-  "weather": [
-    { "city": "Noida", "country": "IN", "units": "metric" }
-  ],
-  "news": { "country": "in" }
-}
-```
+Edit files in `static/` to personalise other sections:
 
 **`static/youtube_videos.json`** — use embed URLs:
 ```json
 [{ "title": "My Video", "url": "https://www.youtube.com/embed/VIDEO_ID", "channel": "Channel Name" }]
 ```
 
-**`static/onenote_pages.json`** — your notes (supports `##`, `###`, `**bold**`, `` `code` ``, fenced code blocks):
+**`static/onenote_pages.json`** — supports `##`, `###`, `**bold**`, `` `code` ``, fenced code blocks:
 ```json
-[{ "id": "n1", "notebook": "Dev Notes", "modified": "2026-06-07", "title": "My Note", "body": "## Title\n- bullet" }]
+[{ "id": "n1", "notebook": "Dev Notes", "modified": "2026-06-08", "title": "My Note", "body": "## Title\n- bullet" }]
 ```
 
 ### 4. Run
@@ -155,7 +153,7 @@ Open `http://localhost:5173`. Vite proxies all `/api` calls to the server.
 
 ---
 
-## 🔒 Security Folder
+## Security Folder
 
 `security/` is **gitignored** — nothing inside it will ever be committed. Store here:
 - Microsoft Graph OAuth tokens (for real OneNote integration)
@@ -164,30 +162,29 @@ Open `http://localhost:5173`. Vite proxies all `/api` calls to the server.
 
 ---
 
-## 🗃️ Database
+## Database
 
-SQLite auto-created at `server/db/dashboard.db` on first run. Seeded with 5 sample improvement items.
+SQLite auto-created at `server/db/dashboard.db` on first run.
 
 | Table | What it holds |
 |---|---|
 | `improvement_notes` | Goals with title, detail, priority, status |
-| `interactions` | Reserved for news reactions (currently localStorage) |
-| `notes` | Reserved for web page notes |
-| `highlights` | Reserved for web page highlights |
+| `news_interactions` | Like/dislike reactions for news articles |
+| `weathers` | Weather cities — permanent flag, soft-delete via `deleted_at` |
+| `web_notes` | Per-page notes for the WebPages viewer |
 
 ---
 
-## 🔑 Getting API Keys (Free)
+## Getting API Keys (Free)
 
 | API | Where |
 |---|---|
 | OpenWeatherMap | `openweathermap.org` → Sign up → API Keys (activates ~10 min) |
-| NewsAPI | `newsapi.org` → Get API Key → verify email |
-| Hacker News | No key needed — fully open API |
+| NewsAPI | `newsapi.org` → Get API Key → verify email (used for both national news and tech news) |
 
 ---
 
-## 🎨 Theming
+## Theming
 
 All colours are CSS custom properties defined in `client/src/index.css`:
 - **Dark** — Catppuccin Mocha palette (default)
@@ -197,7 +194,7 @@ All colours are CSS custom properties defined in `client/src/index.css`:
 
 ---
 
-## 🛣️ Roadmap
+## Roadmap
 
 - [x] Express + React full-stack migration from Python/Streamlit
 - [x] Dark / light theme toggle
@@ -205,7 +202,10 @@ All colours are CSS custom properties defined in `client/src/index.css`:
 - [x] Animated aurora background with mouse parallax
 - [x] Improvements tracker with SQLite CRUD
 - [x] `security/` folder (gitignored)
-- [ ] Move news reactions from localStorage → SQLite
+- [x] News reactions persisted in SQLite
+- [x] Weather cities managed in SQLite (add/remove, soft-delete, permanent flag)
+- [x] Year progress KPI card
+- [x] Consolidated news APIs — both national and tech via NewsAPI
 - [ ] Real OneNote via Microsoft Graph API
 - [ ] Deploy backend on Railway / Render
 - [ ] Deploy frontend on Vercel
@@ -213,12 +213,11 @@ All colours are CSS custom properties defined in `client/src/index.css`:
 
 ---
 
-## 📝 Notes
+## Notes
 
 - `server/db/` and `server/.env` are gitignored — never committed
 - `security/` folder is gitignored — safe to store credentials
-- All dashboard content in `static/` — commit-safe, no secrets
-- HN data is live from the [Hacker News API](https://github.com/HackerNews/API) — no key, always free
+- All static dashboard content in `static/` — commit-safe, no secrets
 - **Do not use `axios`** — use native `fetch` (axios had a supply chain attack)
 
 ---

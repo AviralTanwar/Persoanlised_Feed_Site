@@ -4,13 +4,6 @@ import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import './News.css'
 
-function scoreColor(s) {
-  if (s >= 600) return 'var(--red)'
-  if (s >= 300) return 'var(--peach)'
-  if (s >= 100) return 'var(--blue)'
-  return 'var(--s1)'
-}
-
 export default function TechNews() {
   const [stories, setStories]     = useState([])
   const [reactions, setReactions] = useState({})
@@ -21,17 +14,15 @@ export default function TechNews() {
     setLoading(true)
     setError(null)
 
-    // Stories are critical — load independently
     fetch('/api/hn')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) setStories(data)
-        else throw new Error(data.error || 'Bad response from /api/hn')
+        else throw new Error(data.error || 'Bad response')
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
 
-    // Reactions non-critical
     fetch('/api/reactions')
       .then(r => r.json())
       .then(data => { if (data && typeof data === 'object') setReactions(data) })
@@ -53,8 +44,8 @@ export default function TechNews() {
       body: JSON.stringify({
         article_id:  id,
         title:       story.title,
-        description: '',
-        source:      'Hacker News',
+        description: story.desc || '',
+        source:      story.src,
         url:         story.url,
         reaction:    next,
       }),
@@ -66,14 +57,10 @@ export default function TechNews() {
       <SectionHeader
         icon="💻"
         title="Tech News"
-        right={
-          <a href="https://news.ycombinator.com" target="_blank" rel="noreferrer">
-            <Chip color="var(--peach)" small>Hacker News ↗</Chip>
-          </a>
-        }
+        right={<Chip color="var(--blue)" small>NewsAPI Technology</Chip>}
       />
 
-      {loading && <p className="empty-msg">Fetching top stories…</p>}
+      {loading && <p className="empty-msg">Fetching tech headlines…</p>}
 
       {error && (
         <div className="news-error">
@@ -88,21 +75,19 @@ export default function TechNews() {
 
       <div className="hn-list">
         {stories.map(s => {
-          const id  = String(s.id)
-          const rx  = reactions[id]?.reaction
-          const col = scoreColor(s.score)
+          const id = String(s.id)
+          const rx = reactions[id]?.reaction
           return (
-            <div key={s.id} className="hn-item">
+            <div key={id} className="hn-item">
               <div className="hn-body">
                 <div className="hn-row">
-                  <span className="hn-score" style={{ background: col, color: s.score >= 100 ? 'var(--crust)' : 'var(--text)' }}>
-                    ▲ {s.score}
+                  <span className="hn-score" style={{ background: 'var(--s1)', color: 'var(--text)' }}>
+                    {s.src}
                   </span>
                   <a href={s.url} target="_blank" rel="noreferrer" className="hn-title">{s.title}</a>
                 </div>
                 <div className="hn-meta">
-                  <span>by {s.by}</span>
-                  {s.comments > 0 && <><span className="dot">·</span><span>💬 {s.comments}</span></>}
+                  {s.time && <span>{s.time}</span>}
                   {s.domain && <><span className="dot">·</span><span>{s.domain}</span></>}
                 </div>
               </div>
