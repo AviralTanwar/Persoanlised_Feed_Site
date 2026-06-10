@@ -24,12 +24,56 @@
   border-bottom: 1px solid var(--s0);
   animation: fadeUp .35s ease both;
   animation-delay: var(--d, 0ms);
+  max-height: 280px;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+  user-select: none;
+  transition: transform .32s cubic-bezier(.22,1,.36,1),
+              opacity .32s ease,
+              max-height .4s ease,
+              padding-top .4s ease,
+              padding-bottom .4s ease,
+              border-bottom-width .4s ease;
 }
 .news-item:last-child { border-bottom: none; }
 
+/* like / dislike exit — scale + fade + height collapse, all at once */
+.news-item--out {
+  animation: none !important;
+  transform: scale(0.88) !important;
+  opacity: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom-width: 0 !important;
+  pointer-events: none;
+}
+
+/* swipe exit — slide off first, then height collapses (via transition-delay) */
+.news-item--exit-right,
+.news-item--exit-left {
+  animation: none !important;
+  opacity: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom-width: 0 !important;
+  pointer-events: none;
+  transition:
+    transform .22s cubic-bezier(.22,1,.36,1),
+    opacity   .2s  ease,
+    max-height          .36s .22s ease,
+    padding-top         .36s .22s ease,
+    padding-bottom      .36s .22s ease,
+    border-bottom-width .36s .22s ease !important;
+}
+.news-item--exit-right { transform: translateX(110%) !important; }
+.news-item--exit-left  { transform: translateX(-110%) !important; }
+
 .news-body   { flex: 1; min-width: 0; cursor: pointer; }
-.news-title  { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.45; margin-bottom: 4px; transition: color .15s; }
-.news-body:hover .news-title { color: var(--accent); }
+.news-title  { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.45; margin-bottom: 4px; transition: color .15s; text-decoration: none; display: block; }
+.news-title:hover { color: var(--accent); text-decoration: underline; }
 
 .news-meta {
   display: flex;

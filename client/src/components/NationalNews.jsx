@@ -1,57 +1,146 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import './News.css'
 
 export default function NationalNews() {
-  const [articles, setArticles]   = useState([])
+  const [visible, setVisible]     = useState([])
   const [reactions, setReactions] = useState({})
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(null)
   const [open, setOpen]           = useState(null)
+  const [exiting, setExiting]     = useState({})  // id -> 'out' | 'exit-right' | 'exit-left'
 
-  function load() {
-    setLoading(true)
-    setError(null)
+  const reserveRef = useRef([])          // LIFO stack
+  const initialRef = useRef(new Set())   // ids in first batch (for stagger anim)
+  const dragRef    = useRef({})          // per-item pointer state
+  const noClickRef = useRef(false)       // suppress click after swipe
 
-    // Articles are critical — load independently
-    fetch('/api/news')
+  function load(silent = false) {
+    if (!silent) { setLoading(true); setError(null) }
+
+    fetch(`/api/news?count=20&_t=${Date.now()}`)
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setArticles(data)
-        else throw new Error(data.error || 'Bad response from /api/news')
+        if (!Array.isArray(data)) throw new Error(data.error || 'Bad response')
+        const shuffled  = [...data].sort(() => Math.random() - .5)
+        const showCount = Math.min(8, Math.max(1, shuffled.length - 2))
+        const initial   = shuffled.slice(0, showCount)
+        reserveRef.current = shuffled.slice(showCount).reverse()
+        initialRef.current = new Set(initial.map(a => String(a.id)))
+        setVisible(initial)
+        setExiting({})
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+      .catch(e => { if (!silent) setError(e.message) })
+      .finally(() => { if (!silent) setLoading(false) })
 
-    // Reactions are non-critical — failure doesn't block articles
-    fetch('/api/reactions')
-      .then(r => r.json())
-      .then(data => { if (data && typeof data === 'object') setReactions(data) })
-      .catch(() => {}) // reactions failing is fine — just show no reactions
+    if (!silent) {
+      fetch('/api/reactions')
+        .then(r => r.json())
+        .then(d => { if (d && typeof d === 'object') setReactions(d) })
+        .catch(() => {})
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    const id = setInterval(() => load(true), 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  function dismissItem(id, mode = 'out') {
+    setOpen(o => o === id ? null : o)
+    setExiting(e => ({ ...e, [id]: mode }))
+    // exit-left/right: 220ms slide + 360ms collapse = 580ms total → wait 620ms
+    // out: all transitions 440ms
+    const wait = mode === 'out' ? 440 : 620
+    setTimeout(() => {
+      const next = reserveRef.current.pop() || null
+      setVisible(v => {
+        const filtered = v.filter(a => String(a.id) !== id)
+        return next ? [...filtered, next] : filtered
+      })
+      setExiting(e => { const n = { ...e }; delete n[id]; return n })
+    }, wait)
+  }
 
   async function react(article, type) {
-    const current = reactions[article.id]?.reaction
+    const id = String(article.id)
+    if (exiting[id]) return
+    const current = reactions[id]?.reaction
     const next    = current === type ? null : type
-
-    setReactions(r => ({ ...r, [article.id]: { ...r[article.id], reaction: next } }))
-
+    setReactions(r => ({ ...r, [id]: { reaction: next } }))
+    dismissItem(id, 'out')
     fetch('/api/reactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        article_id:  article.id,
-        title:       article.title,
-        description: article.desc,
-        source:      article.src,
-        url:         article.url,
-        reaction:    next,
+        article_id: id, title: article.title,
+        description: article.desc || '', source: article.src,
+        url: article.url, reaction: next,
       }),
-    }).catch(() => {}) // fire-and-forget — UI already updated optimistically
+    }).catch(() => {})
+  }
+
+  // ── Swipe gesture (pointer events) ──
+  function onPointerDown(e, id) {
+    if (exiting[id]) return
+    dragRef.current[id] = { startX: e.clientX, startY: e.clientY, dx: 0, active: false, el: null }
+  }
+
+  function onPointerMove(e, id) {
+    const d = dragRef.current[id]
+    if (!d) return
+    const dx = e.clientX - d.startX
+    const dy = e.clientY - d.startY
+    if (!d.active) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        d.active = true
+        d.el     = e.currentTarget
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } else return
+    }
+    d.dx = dx
+    d.el.style.transform  = `translateX(${dx}px) rotate(${(dx * 0.03).toFixed(2)}deg)`
+    d.el.style.opacity    = String(Math.max(0.15, 1 - Math.abs(dx) / 180))
+    d.el.style.transition = 'none'
+  }
+
+  function onPointerUp(e, id) {
+    const d = dragRef.current[id]
+    if (!d) return
+    delete dragRef.current[id]
+    if (!d.active || !d.el) return
+
+    noClickRef.current = true
+    setTimeout(() => { noClickRef.current = false }, 100)
+
+    const el = d.el
+
+    if (Math.abs(d.dx) > 80) {
+      // Clear inline styles so browser batches with the class addition below.
+      // Browser will compute: old=translateX(dx), new=translateX(±110%) → transition fires.
+      el.style.transition = ''
+      el.style.transform  = ''
+      el.style.opacity    = ''
+      dismissItem(id, d.dx > 0 ? 'exit-right' : 'exit-left')
+    } else {
+      el.style.transition = ''
+      el.style.transform  = ''
+      el.style.opacity    = ''
+    }
+  }
+
+  function onPointerCancel(e, id) {
+    const d = dragRef.current[id]
+    if (!d) { delete dragRef.current[id]; return }
+    if (d.el) {
+      d.el.style.transition = ''
+      d.el.style.transform  = ''
+      d.el.style.opacity    = ''
+    }
+    delete dragRef.current[id]
   }
 
   return (
@@ -71,18 +160,41 @@ export default function NationalNews() {
         </div>
       )}
 
-      {!loading && !error && articles.length === 0 && (
+      {!loading && !error && visible.length === 0 && (
         <p className="empty-msg">No articles found.</p>
       )}
 
       <div className="news-list">
-        {articles.map((a, i) => {
-          const rx     = reactions[a.id]?.reaction
-          const isOpen = open === a.id
+        {visible.map((a, i) => {
+          const id      = String(a.id)
+          const rx      = reactions[id]?.reaction
+          const isOpen  = open === id
+          const exitCls = exiting[id] ? ` news-item--${exiting[id]}` : ''
+          const delay   = initialRef.current.has(id) ? `${i * 40}ms` : '0ms'
           return (
-            <div key={a.id} className="news-item" style={{ '--d': `${i * 40}ms` }}>
-              <div className="news-body" onClick={() => setOpen(isOpen ? null : a.id)}>
-                <div className="news-title">{a.title}</div>
+            <div
+              key={id}
+              className={`news-item${exitCls}`}
+              style={{ '--d': delay }}
+              onPointerDown={e => onPointerDown(e, id)}
+              onPointerMove={e => onPointerMove(e, id)}
+              onPointerUp={e => onPointerUp(e, id)}
+              onPointerCancel={e => onPointerCancel(e, id)}
+            >
+              <div className="news-body" onClick={() => {
+                if (noClickRef.current) return
+                setOpen(isOpen ? null : id)
+              }}>
+                <a
+                  className="news-title"
+                  href={a.url || undefined}
+                  target={a.url ? '_blank' : undefined}
+                  rel="noreferrer"
+                  onClick={e => {
+                    if (noClickRef.current) { e.preventDefault(); return }
+                    if (a.url) e.stopPropagation()
+                  }}
+                >{a.title}</a>
                 <div className="news-meta">
                   <span>{a.src}</span>
                   <span className="dot">·</span>
@@ -94,11 +206,12 @@ export default function NationalNews() {
                   <div className="news-desc">{a.desc}</div>
                 </div>
               </div>
-              <div className="news-actions">
+              <div className="news-actions" onPointerDown={e => e.stopPropagation()}>
                 <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} onClick={() => react(a, 'like')}>👍</button>
                 <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(a, 'dislike')}>👎</button>
                 {a.url !== '#' && (
-                  <a className="rb" href={a.url} target="_blank" rel="noreferrer" title="Open">🔗</a>
+                  <a className="rb" href={a.url} target="_blank" rel="noreferrer" title="Open"
+                    onClick={ev => { if (noClickRef.current) ev.preventDefault() }}>🔗</a>
                 )}
               </div>
             </div>
