@@ -183,12 +183,12 @@ export default function TechNews() {
               }}>
                 <a
                   className="news-title"
-                  href={s.url !== '#' ? s.url : undefined}
-                  target={s.url !== '#' ? '_blank' : undefined}
+                  href={s.url || undefined}
+                  target={s.url ? '_blank' : undefined}
                   rel="noreferrer"
                   onClick={e => {
                     if (noClickRef.current) { e.preventDefault(); return }
-                    if (s.url !== '#') e.stopPropagation()
+                    if (s.url) e.stopPropagation()
                   }}
                 >{s.title}</a>
                 {/* Always show source · time · ▼ more to match National News */}
