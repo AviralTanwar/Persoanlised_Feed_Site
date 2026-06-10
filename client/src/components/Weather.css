@@ -45,19 +45,20 @@
 .wtile-rm {
   position: absolute;
   top: .7rem; right: .7rem;
-  background: rgba(0,0,0,.25);
+  background: rgba(255,255,255,.85);
   border: none;
-  color: inherit;
+  color: var(--red);
+  font-weight: 700;
   width: 22px; height: 22px;
   border-radius: 50%;
   cursor: pointer;
   font-size: 12px;
   opacity: 0;
-  transition: opacity .15s;
+  transition: opacity .15s, background .15s;
   display: flex; align-items: center; justify-content: center;
 }
-.wtile:hover .wtile-rm { opacity: .7; }
-.wtile-rm:hover { opacity: 1 !important; background: rgba(0,0,0,.45); }
+.wtile:hover .wtile-rm { opacity: .85; }
+.wtile-rm:hover { opacity: 1 !important; background: #fff; }
 
 .wtile-top {
   display: flex;

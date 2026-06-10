@@ -11,6 +11,7 @@ import OneNote      from './components/OneNote'
 import YouTube      from './components/YouTube'
 import WebPages     from './components/WebPages'
 import Improvements from './components/Improvements'
+import YearKPI      from './components/YearKPI'
 
 import './App.css'
 
@@ -167,6 +168,9 @@ export default function App() {
 
       {/* ── Page content ── */}
       <main className="content">
+        {/* Year KPI */}
+        <div className="reveal"><YearKPI /></div>
+
         {/* Hero band */}
         <div className="hero-band reveal">
           <Hero clock={tweaks.clock} />
