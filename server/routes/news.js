@@ -32,15 +32,25 @@ function canonicalUrl(rawUrl, title) {
   }
 }
 
+// NewsAPI's /top-headlines?country=in frequently returns zero results on the
+// free tier (India top-headlines coverage is unreliable). /everything filtered
+// to major Indian outlets has consistent coverage instead.
+const INDIAN_DOMAINS = [
+  'timesofindia.indiatimes.com',
+  'ndtv.com',
+  'hindustantimes.com',
+  'thehindu.com',
+  'indianexpress.com',
+].join(',');
+
 router.get('/', async (req, res) => {
   const key = process.env.NEWS_API_KEY;
   if (!key) return res.status(500).json({ error: 'NEWS_API_KEY not configured' });
 
-  const country  = req.query.country || 'in';
   const pageSize = Math.min(Number(req.query.count || req.query.pageSize) || 8, 20);
 
   try {
-    const url = `https://newsapi.org/v2/top-headlines?country=${country}&pageSize=${pageSize}&apiKey=${key}`;
+    const url = `https://newsapi.org/v2/everything?domains=${INDIAN_DOMAINS}&sortBy=publishedAt&pageSize=${pageSize}&apiKey=${key}`;
     const response = await fetch(url);
     const data = await response.json();
 
