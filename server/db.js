@@ -39,17 +39,20 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS news_interactions (
+  CREATE TABLE IF NOT EXISTS tbl_national_news (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    article_id TEXT NOT NULL UNIQUE,
-    title TEXT NOT NULL,
-    description TEXT DEFAULT '',
+    headline TEXT NOT NULL,
     source TEXT DEFAULT '',
-    url TEXT DEFAULT '',
-    reaction TEXT CHECK(reaction IN ('like', 'dislike')),
+    summary TEXT DEFAULT '',
+    link TEXT NOT NULL UNIQUE,
+    response INTEGER NOT NULL CHECK(response IN (-1, 0, 1)) DEFAULT 0,
+    link_open INTEGER NOT NULL CHECK(link_open IN (0, 1)) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL
   );
+
+  DROP TABLE IF EXISTS news_interactions;
 
   CREATE TABLE IF NOT EXISTS web_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

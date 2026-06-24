@@ -65,22 +65,39 @@ export default function NationalNews() {
     }, wait)
   }
 
-  async function react(article, type) {
+  // response: -1 dislike, 0 skipped, 1 liked
+  function saveInteraction(article, fields) {
     const id = String(article.id)
-    if (exiting[id]) return
-    const current = reactions[id]?.reaction
-    const next    = current === type ? null : type
-    setReactions(r => ({ ...r, [id]: { reaction: next } }))
-    dismissItem(id, 'out')
     fetch('/api/reactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        article_id: id, title: article.title,
-        description: article.desc || '', source: article.src,
-        url: article.url, reaction: next,
+        link: id, headline: article.title,
+        source: article.src, summary: article.desc || '',
+        ...fields,
       }),
     }).catch(() => {})
+  }
+
+  function react(article, type) {
+    const id = String(article.id)
+    if (exiting[id]) return
+    const response = type === 'like' ? 1 : -1
+    setReactions(r => ({ ...r, [id]: { ...r[id], response } }))
+    dismissItem(id, 'out')
+    saveInteraction(article, { response })
+  }
+
+  function recordSkip(article) {
+    const id = String(article.id)
+    setReactions(r => ({ ...r, [id]: { ...r[id], response: 0 } }))
+    saveInteraction(article, { response: 0 })
+  }
+
+  function recordLinkOpen(article) {
+    const id = String(article.id)
+    setReactions(r => ({ ...r, [id]: { ...r[id], link_open: 1 } }))
+    saveInteraction(article, { link_open: 1 })
   }
 
   // ── Swipe gesture (pointer events) ──
@@ -125,6 +142,8 @@ export default function NationalNews() {
       el.style.transform  = ''
       el.style.opacity    = ''
       dismissItem(id, d.dx > 0 ? 'exit-right' : 'exit-left')
+      const article = visible.find(a => String(a.id) === id)
+      if (article) recordSkip(article)
     } else {
       el.style.transition = ''
       el.style.transform  = ''
@@ -166,8 +185,9 @@ export default function NationalNews() {
 
       <div className="news-list">
         {visible.map((a, i) => {
-          const id      = String(a.id)
-          const rx      = reactions[id]?.reaction
+          const id        = String(a.id)
+          const respVal   = reactions[id]?.response
+          const rx        = respVal === 1 ? 'like' : respVal === -1 ? 'dislike' : null
           const isOpen  = open === id
           const exitCls = exiting[id] ? ` news-item--${exiting[id]}` : ''
           const delay   = initialRef.current.has(id) ? `${i * 40}ms` : '0ms'
@@ -176,6 +196,7 @@ export default function NationalNews() {
               key={id}
               className={`news-item${exitCls}`}
               style={{ '--d': delay }}
+              onAnimationEnd={e => { e.currentTarget.style.animation = 'none' }}
               onPointerDown={e => onPointerDown(e, id)}
               onPointerMove={e => onPointerMove(e, id)}
               onPointerUp={e => onPointerUp(e, id)}
@@ -192,7 +213,7 @@ export default function NationalNews() {
                   rel="noreferrer"
                   onClick={e => {
                     if (noClickRef.current) { e.preventDefault(); return }
-                    if (a.url) e.stopPropagation()
+                    if (a.url) { e.stopPropagation(); recordLinkOpen(a) }
                   }}
                 >{a.title}</a>
                 <div className="news-meta">
@@ -211,7 +232,7 @@ export default function NationalNews() {
                 <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(a, 'dislike')}>👎</button>
                 {a.url !== '#' && (
                   <a className="rb" href={a.url} target="_blank" rel="noreferrer" title="Open"
-                    onClick={ev => { if (noClickRef.current) ev.preventDefault() }}>🔗</a>
+                    onClick={ev => { if (noClickRef.current) ev.preventDefault(); else recordLinkOpen(a) }}>🔗</a>
                 )}
               </div>
             </div>
