@@ -1,8 +1,8 @@
 # API Explorer Dashboard
 
-A personal mission-control dashboard: year progress KPI, live weather, national + tech news, OneNote reader, YouTube viewer with per-video notes, and an improvements tracker. Glass UI with animated aurora background, dark/light theme, and 3D hover effects.
+A personal mission-control dashboard: year progress KPI, live weather, a data-driven news section (national + tech, more sources addable via SQLite), OneNote reader, YouTube viewer with per-video notes, a web page annotator, and an improvements tracker. Glass UI with animated aurora background, dark/light theme, and 3D hover effects.
 
-**Stack:** React 19 + Vite · Express + better-sqlite3 · OpenWeatherMap + NewsAPI
+**Stack:** React 19 + Vite · Express + better-sqlite3 · OpenWeatherMap + Google News RSS
 
 > **Do not use `axios`** — use native `fetch` instead. Axios was compromised in a supply chain attack.
 
@@ -14,13 +14,13 @@ A personal mission-control dashboard: year progress KPI, live weather, national 
 |---|---|
 | 📅 Year KPI | Days left in the year + progress bar with colour-coded urgency |
 | 🌤️ Weather | Live multi-city tiles with condition gradients and 3D hover tilt. Cities managed via SQLite (add/remove up to 6, permanent cities cannot be removed) |
-| 📰 National News | Top Indian headlines via NewsAPI — expandable summaries, like/dislike |
-| 💻 Tech News | Global technology headlines via NewsAPI — like/dislike |
+| 📰 News | One panel per **live** row in `tbl_news_kpi_data` — currently National (India) and Tech, both via Google News RSS. Like/dislike, swipe to skip, expandable summaries, open-in-new-tab — every article and interaction is written to SQLite in real time. Add a row to the table and a new panel appears automatically, no code changes |
 | 📓 OneNote | Sidebar + Markdown reader (edit `static/onenote_pages.json`) |
 | 🎬 YouTube | Playlist + iframe embed + per-video timestamped notes |
+| 🌐 Web Pages | Iframe viewer for arbitrary pages + per-page notes (SQLite-backed) |
 | 💡 Improvements | Full CRUD goal tracker stored in SQLite |
 | ☀️/🌙 | Dark / light theme toggle — top-right button |
-| ⚙️ | Tweaks panel: accent colour, density, clock format — bottom-left button |
+| ⚙️ | Tweaks panel: accent colour (theme-aware), density, clock format — bottom-left button |
 
 ---
 
@@ -32,7 +32,9 @@ A personal mission-control dashboard: year progress KPI, live weather, national 
 | Backend | Node.js · Express 5 |
 | Database | better-sqlite3 (local at `server/db/dashboard.db`) |
 | HTTP | Native `fetch` — no axios |
-| APIs | OpenWeatherMap · NewsAPI (national headlines + technology category) |
+| APIs | OpenWeatherMap (weather) · Google News RSS (all news sources — no key, no quota) |
+
+> NewsAPI was used originally for news but is **no longer used**: its free tier is ~24h delayed, gets dominated by a single crawled source, and rate-limits at 100 requests/day. Google News RSS has none of those limits and updates within minutes of publication.
 
 ---
 
@@ -53,34 +55,36 @@ API Explorer Dashboard/
 │   │       ├── shared/          # Card (3D glass), Chip, SectionHeader
 │   │       ├── layout/          # SideNav (drawer, theme toggle, scroll-spy)
 │   │       ├── YearKPI.jsx      # Days-left-in-year KPI bar (top of page)
-│   │       ├── Hero.jsx         # Live clock + greeting
+│   │       ├── Hero.jsx         # Live clock + greeting + scanline
 │   │       ├── QuoteBanner.jsx  # Developer excuses + motivational quotes
 │   │       ├── Weather.jsx      # Tiles + add/remove cities (SQLite-backed)
-│   │       ├── NationalNews.jsx # NewsAPI India headlines
-│   │       ├── TechNews.jsx     # NewsAPI technology headlines
+│   │       ├── News.jsx         # Outer card — fetches live KPIs, renders one NewsPanel per row
+│   │       ├── NewsPanel.jsx    # Generic news panel (like/dislike/skip/more/open), reused per KPI
 │   │       ├── OneNote.jsx      # Sidebar + Markdown renderer
 │   │       ├── YouTube.jsx      # Playlist + iframe + notes
+│   │       ├── WebPages.jsx     # Iframe viewer + per-page notes
 │   │       └── Improvements.jsx # Full CRUD with SQLite backend
 │   └── vite.config.js           # Proxies /api → localhost:3001
 │
 ├── server/                      # Express API
 │   ├── index.js
-│   ├── db.js                    # better-sqlite3 setup + schema + seeds
+│   ├── db.js                    # better-sqlite3 setup + schema + migrations + seeds
 │   └── routes/
-│       ├── weather.js           # GET /api/weather        (OpenWeatherMap)
+│       ├── weather.js           # GET /api/weather             (OpenWeatherMap)
 │       ├── weatherCities.js     # GET/POST/DELETE /api/weather-cities (SQLite)
-│       ├── news.js              # GET /api/news           (NewsAPI — country=in)
-│       ├── hn.js                # GET /api/hn             (NewsAPI — category=technology)
-│       ├── newsInteractions.js  # GET/POST /api/reactions (SQLite)
-│       ├── staticData.js        # GET /api/static/:key    (serves static/*.json)
-│       ├── webNotes.js          # GET/POST /api/web-notes (SQLite)
+│       ├── newsKpis.js          # GET /api/news-kpis           (live rows from tbl_news_kpi_data)
+│       ├── news.js              # GET /api/news/:kpiId         (fetches kpi.api_url, dedupes, caches 15min)
+│       ├── newsInteractions.js  # GET/POST /api/reactions      (tbl_news_data — like/dislike/open/more/live)
+│       ├── staticData.js        # GET /api/static/:key         (serves static/*.json)
+│       ├── webNotes.js          # GET/POST /api/web-notes      (SQLite)
 │       ├── improvements.js      # GET/POST/PATCH/DELETE /api/improvements (SQLite)
-│       └── quotes.js            # GET /api/quotes
+│       └── quotes.js            # GET /api/quotes              (QUOTES_API_URL passthrough)
 │
 ├── static/                      # Edit these to personalise your dashboard
-│   ├── config.json              # News country, misc config
+│   ├── config.json              # Misc config
 │   ├── youtube_videos.json      # Your YouTube embed URLs
 │   ├── onenote_pages.json       # Your notes (Markdown supported)
+│   ├── web_pages.json           # Pages to load in the Web Pages viewer
 │   └── excuses.json             # Programmer excuses list
 │
 ├── security/                    # GITIGNORED — store any auth files here
@@ -112,14 +116,16 @@ Edit `server/.env`:
 
 ```env
 OPENWEATHER_API_KEY=your_key    # openweathermap.org → free signup
-NEWS_API_KEY=your_key           # newsapi.org → free (dev/localhost only)
+QUOTES_API_URL=...              # any quotes API — default works out of the box
 ```
 
-> NewsAPI free tier works from localhost only. On production, use a paid plan or a different news source. If no key is set, both `/api/news` and `/api/hn` return built-in mock data automatically.
+> News needs **no API key** — it pulls Google News RSS feeds directly. `NEWS_API_KEY` in `.env.example` is a legacy leftover from before the switch; safe to leave blank or delete.
 
 ### 3. Customise your data
 
 **Weather cities** are managed at runtime via the dashboard UI (Add / Remove on the Weather tile). Permanent cities (seeded on first run) cannot be removed. To change the permanent seed cities, edit `server/db.js`.
+
+**News sources** are managed entirely through the `tbl_news_kpi_data` table — there is no UI for it yet. To add a source: insert a row with `name`, `tag`, `logo` (emoji), `api_url` (any RSS feed URL), `api_name`, and `live = 1`. A new panel appears on next page load. Set `live = 0` to retire a source without deleting its history.
 
 Edit files in `static/` to personalise other sections:
 
@@ -164,14 +170,16 @@ Open `http://localhost:5173`. Vite proxies all `/api` calls to the server.
 
 ## Database
 
-SQLite auto-created at `server/db/dashboard.db` on first run.
+SQLite auto-created at `server/db/dashboard.db` on first run. `db.js` migrates the schema forward automatically on every server start (renames, new columns, new tables) — just restart the backend after pulling changes.
 
 | Table | What it holds |
 |---|---|
+| `tbl_news_kpi_data` | News source registry — one row per panel shown in the News section. `live` controls whether it renders; `api_url` is what gets fetched |
+| `tbl_news_data` | Every article ever shown, tagged by `news_api_id` (which KPI it came from). Tracks `response` (like/dislike/skip), `link_open`, `clicked_on_more`, `live` (currently on screen or not), `news_date` (real publish date), `shown` (most recent interaction code) |
 | `improvement_notes` | Goals with title, detail, priority, status |
-| `news_interactions` | Like/dislike reactions for news articles |
 | `weathers` | Weather cities — permanent flag, soft-delete via `deleted_at` |
-| `web_notes` | Per-page notes for the WebPages viewer |
+| `web_notes` | Per-page notes for the Web Pages viewer |
+| `notes`, `highlights`, `interactions` | Legacy tables, currently unused by any route |
 
 ---
 
@@ -180,7 +188,7 @@ SQLite auto-created at `server/db/dashboard.db` on first run.
 | API | Where |
 |---|---|
 | OpenWeatherMap | `openweathermap.org` → Sign up → API Keys (activates ~10 min) |
-| NewsAPI | `newsapi.org` → Get API Key → verify email (used for both national news and tech news) |
+| Google News RSS | No key needed — used directly via the URL stored in `tbl_news_kpi_data.api_url` |
 
 ---
 
@@ -189,7 +197,7 @@ SQLite auto-created at `server/db/dashboard.db` on first run.
 All colours are CSS custom properties defined in `client/src/index.css`:
 - **Dark** — Catppuccin Mocha palette (default)
 - **Light** — Catppuccin Latte palette
-- **Accent** — 4 options: blue · mauve · peach (default) · teal
+- **Accent** — 4 options: blue · mauve · peach (default) · teal — each resolves to a theme-appropriate shade automatically (the dark-mode pastel would fail contrast on the light background, so light mode uses the saturated Latte equivalent of whichever hue you pick)
 - Preferences persist in `localStorage` automatically
 
 ---
@@ -205,7 +213,9 @@ All colours are CSS custom properties defined in `client/src/index.css`:
 - [x] News reactions persisted in SQLite
 - [x] Weather cities managed in SQLite (add/remove, soft-delete, permanent flag)
 - [x] Year progress KPI card
-- [x] Consolidated news APIs — both national and tech via NewsAPI
+- [x] Switched all news sources from NewsAPI to Google News RSS (no key, no quota, real-time)
+- [x] News section generalized to a data-driven KPI registry (`tbl_news_kpi_data`) — panels are config, not code
+- [ ] Admin UI for managing news KPIs (currently DB-only)
 - [ ] Real OneNote via Microsoft Graph API
 - [ ] Deploy backend on Railway / Render
 - [ ] Deploy frontend on Vercel

@@ -7,13 +7,23 @@ import './News.css'
 // `kpi` = { id, logo, name, tag }. All interactions write into tbl_news_data
 // tagged with news_api_id = kpi.id, so every source shares the same table
 // but stays independently dedup'd and queryable.
+//
+// The backend serves a cascade of tiers as the fresh feed pool runs dry:
+// 'fresh' (never shown) -> 'unseen-old' (shown before, no reaction, never
+// expanded) -> 'glanced-old' (shown before, expanded, no reaction) ->
+// 'exhausted' (nothing left except already-reacted-to articles).
 export default function NewsPanel({ kpi }) {
   const [visible, setVisible]     = useState([])
+  const [tier, setTier]           = useState(null)
   const [reactions, setReactions] = useState({})
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(null)
   const [open, setOpen]           = useState(null)
   const [exiting, setExiting]     = useState({})  // id -> 'out' | 'exit-right' | 'exit-left'
+
+  const [reviewMode, setReviewMode]       = useState(false)
+  const [reviewArticles, setReviewArticles] = useState([])
+  const [reviewLoading, setReviewLoading] = useState(false)
 
   const reserveRef     = useRef([])          // LIFO stack
   const initialRef     = useRef(new Set())   // ids in first batch (for stagger anim)
@@ -27,8 +37,9 @@ export default function NewsPanel({ kpi }) {
     fetch(`/api/news/${kpi.id}?count=20&_t=${Date.now()}`)
       .then(r => r.json())
       .then(data => {
-        if (!Array.isArray(data)) throw new Error(data.error || 'Bad response')
-        const shuffled  = [...data].sort(() => Math.random() - .5)
+        if (!data || !Array.isArray(data.articles)) throw new Error(data?.error || 'Bad response')
+        setTier(data.tier)
+        const shuffled  = [...data.articles].sort(() => Math.random() - .5)
         const showCount = Math.min(8, shuffled.length)
         const initial   = shuffled.slice(0, showCount)
         reserveRef.current = shuffled.slice(showCount).reverse()
@@ -73,11 +84,18 @@ export default function NewsPanel({ kpi }) {
     const wait = mode === 'out' ? 440 : 620
     setTimeout(() => {
       const next = reserveRef.current.pop() || null
+      let depleted = false
       setVisible(v => {
         const filtered = v.filter(a => String(a.id) !== id)
-        return next ? [...filtered, next] : filtered
+        const result = next ? [...filtered, next] : filtered
+        depleted = result.length === 0
+        return result
       })
       setExiting(e => { const n = { ...e }; delete n[id]; return n })
+      // This tier's batch just ran out — re-fetch, which re-evaluates the
+      // fresh -> unseen-old -> glanced-old -> exhausted cascade from scratch
+      // now that the dismissed article's response/clicked_on_more changed.
+      if (depleted) load()
     }, wait)
   }
 
@@ -113,6 +131,15 @@ export default function NewsPanel({ kpi }) {
     saveInteraction(article, { response, shown: type === 'like' ? 3 : 4 })
   }
 
+  // Review mode: re-react without removing the card — it's a browse-back
+  // archive, not a discovery queue, so there's nothing to dismiss into.
+  function reactInPlace(article, type) {
+    const id = String(article.id)
+    const response = type === 'like' ? 1 : -1
+    setReactions(r => ({ ...r, [id]: { ...r[id], response } }))
+    saveInteraction(article, { response, shown: type === 'like' ? 3 : 4 })
+  }
+
   function recordSkip(article) {
     const id = String(article.id)
     setReactions(r => ({ ...r, [id]: { ...r[id], response: 0 } }))
@@ -129,6 +156,16 @@ export default function NewsPanel({ kpi }) {
     const id = String(article.id)
     setReactions(r => ({ ...r, [id]: { ...r[id], clicked_on_more: 1 } }))
     saveInteraction(article, { clicked_on_more: 1, shown: 2 })
+  }
+
+  function openReview() {
+    setReviewMode(true)
+    setReviewLoading(true)
+    fetch(`/api/news/${kpi.id}/old?count=30`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setReviewArticles(d) })
+      .catch(() => {})
+      .finally(() => setReviewLoading(false))
   }
 
   // ── Swipe gesture (pointer events) ──
@@ -193,6 +230,75 @@ export default function NewsPanel({ kpi }) {
     delete dragRef.current[id]
   }
 
+  function renderArticle(a, index, { review = false } = {}) {
+    const id      = String(a.id)
+    const respVal = reactions[id]?.response
+    const rx      = respVal === 1 ? 'like' : respVal === -1 ? 'dislike' : null
+    const isOpen  = open === id
+    const exitCls = !review && exiting[id] ? ` news-item--${exiting[id]}` : ''
+    const delay   = !review && initialRef.current.has(id) ? `${index * 40}ms` : '0ms'
+
+    return (
+      <div
+        key={id}
+        className={`news-item${exitCls}`}
+        style={{ '--d': delay }}
+        onAnimationEnd={e => { e.currentTarget.style.animation = 'none' }}
+        onPointerDown={review ? undefined : e => onPointerDown(e, id)}
+        onPointerMove={review ? undefined : e => onPointerMove(e, id)}
+        onPointerUp={review ? undefined : e => onPointerUp(e, id)}
+        onPointerCancel={review ? undefined : e => onPointerCancel(e, id)}
+      >
+        <div className="news-body" onClick={() => {
+          if (noClickRef.current) return
+          const willOpen = !isOpen
+          setOpen(willOpen ? id : null)
+          if (willOpen && !review) recordMoreClick(a)
+        }}>
+          <a
+            className="news-title"
+            draggable="false"
+            href={a.url || undefined}
+            target={a.url ? '_blank' : undefined}
+            rel="noreferrer"
+            onClick={e => {
+              if (noClickRef.current) { e.preventDefault(); return }
+              if (a.url) { e.stopPropagation(); if (!review) recordLinkOpen(a) }
+            }}
+          >{a.title}</a>
+          <div className="news-meta">
+            <span>{a.src}</span>
+            <span className="dot">·</span>
+            <span>{a.time}</span>
+          </div>
+          <div className={`news-desc-wrap${isOpen ? ' open' : ''}`}>
+            <div className="news-desc">{a.desc}</div>
+          </div>
+        </div>
+        <div className="news-actions" onPointerDown={e => e.stopPropagation()}>
+          <button
+            className="news-more-btn"
+            onClick={() => {
+              const willOpen = !isOpen
+              setOpen(willOpen ? id : null)
+              if (willOpen && !review) recordMoreClick(a)
+            }}
+          >
+            {isOpen ? '▲ Less' : '▼ More'}
+          </button>
+          <div className="news-action-group">
+            <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} title="Like" onClick={() => review ? reactInPlace(a, 'like') : react(a, 'like')}>👍</button>
+            <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} title="Dislike" onClick={() => review ? reactInPlace(a, 'dislike') : react(a, 'dislike')}>👎</button>
+            {a.url !== '#' && (
+              <a className="rb rb-open" draggable="false" href={a.url} target="_blank" rel="noreferrer" title="Open article"
+                onClick={ev => { if (noClickRef.current) ev.preventDefault(); else if (!review) recordLinkOpen(a) }}>🔗 Open</a>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="news-panel">
       <SectionHeader
@@ -201,88 +307,49 @@ export default function NewsPanel({ kpi }) {
         right={kpi.tag ? <Chip color="var(--peach)" small>{kpi.tag}</Chip> : null}
       />
 
-      {loading && <p className="empty-msg">Loading headlines…</p>}
+      {reviewMode ? (
+        <>
+          <div className="news-review-header">
+            <span>📜 Reviewing old news</span>
+            <button className="btn-g" style={{ fontSize: 11 }} onClick={() => setReviewMode(false)}>✕ Back to live feed</button>
+          </div>
+          {reviewLoading && <p className="empty-msg">Loading…</p>}
+          {!reviewLoading && reviewArticles.length === 0 && <p className="empty-msg">Nothing reacted to yet.</p>}
+          <div className="news-list">
+            {reviewArticles.map((a, i) => renderArticle(a, i, { review: true }))}
+          </div>
+        </>
+      ) : (
+        <>
+          {loading && <p className="empty-msg">Loading headlines…</p>}
 
-      {error && (
-        <div className="news-error">
-          <span>⚠️ {error}</span>
-          <button className="btn-g" style={{ fontSize: 11 }} onClick={load}>Retry</button>
-        </div>
-      )}
-
-      {!loading && !error && visible.length === 0 && (
-        <p className="empty-msg">No articles found.</p>
-      )}
-
-      <div className="news-list">
-        {visible.map((a, i) => {
-          const id        = String(a.id)
-          const respVal   = reactions[id]?.response
-          const rx        = respVal === 1 ? 'like' : respVal === -1 ? 'dislike' : null
-          const isOpen  = open === id
-          const exitCls = exiting[id] ? ` news-item--${exiting[id]}` : ''
-          const delay   = initialRef.current.has(id) ? `${i * 40}ms` : '0ms'
-          return (
-            <div
-              key={id}
-              className={`news-item${exitCls}`}
-              style={{ '--d': delay }}
-              onAnimationEnd={e => { e.currentTarget.style.animation = 'none' }}
-              onPointerDown={e => onPointerDown(e, id)}
-              onPointerMove={e => onPointerMove(e, id)}
-              onPointerUp={e => onPointerUp(e, id)}
-              onPointerCancel={e => onPointerCancel(e, id)}
-            >
-              <div className="news-body" onClick={() => {
-                if (noClickRef.current) return
-                const willOpen = !isOpen
-                setOpen(willOpen ? id : null)
-                if (willOpen) recordMoreClick(a)
-              }}>
-                <a
-                  className="news-title"
-                  draggable="false"
-                  href={a.url || undefined}
-                  target={a.url ? '_blank' : undefined}
-                  rel="noreferrer"
-                  onClick={e => {
-                    if (noClickRef.current) { e.preventDefault(); return }
-                    if (a.url) { e.stopPropagation(); recordLinkOpen(a) }
-                  }}
-                >{a.title}</a>
-                <div className="news-meta">
-                  <span>{a.src}</span>
-                  <span className="dot">·</span>
-                  <span>{a.time}</span>
-                </div>
-                <div className={`news-desc-wrap${isOpen ? ' open' : ''}`}>
-                  <div className="news-desc">{a.desc}</div>
-                </div>
-              </div>
-              <div className="news-actions" onPointerDown={e => e.stopPropagation()}>
-                <button
-                  className="news-more-btn"
-                  onClick={() => {
-                    const willOpen = !isOpen
-                    setOpen(willOpen ? id : null)
-                    if (willOpen) recordMoreClick(a)
-                  }}
-                >
-                  {isOpen ? '▲ Less' : '▼ More'}
-                </button>
-                <div className="news-action-group">
-                  <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} title="Like" onClick={() => react(a, 'like')}>👍</button>
-                  <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} title="Dislike" onClick={() => react(a, 'dislike')}>👎</button>
-                  {a.url !== '#' && (
-                    <a className="rb rb-open" draggable="false" href={a.url} target="_blank" rel="noreferrer" title="Open article"
-                      onClick={ev => { if (noClickRef.current) ev.preventDefault(); else recordLinkOpen(a) }}>🔗 Open</a>
-                  )}
-                </div>
-              </div>
+          {error && (
+            <div className="news-error">
+              <span>⚠️ {error}</span>
+              <button className="btn-g" style={{ fontSize: 11 }} onClick={load}>Retry</button>
             </div>
-          )
-        })}
-      </div>
+          )}
+
+          {!loading && !error && visible.length === 0 && (
+            tier === 'exhausted' ? (
+              <div className="news-exhausted">
+                <p className="empty-msg">You've seen everything there is to see 🎉</p>
+                <button className="btn-g" onClick={openReview}>↺ Review old news</button>
+              </div>
+            ) : (
+              <p className="empty-msg">No articles found.</p>
+            )
+          )}
+
+          {!loading && !error && visible.length > 0 && (tier === 'unseen-old' || tier === 'glanced-old') && (
+            <p className="news-tier-banner">↻ Previously shown — no brand-new stories right now</p>
+          )}
+
+          <div className="news-list">
+            {visible.map((a, i) => renderArticle(a, i))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
