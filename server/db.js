@@ -7,6 +7,14 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
 
 const db = new Database(path.join(dbDir, 'dashboard.db'));
 
+// Migration: rename the old single-source table to the new multi-source name.
+// Must run BEFORE the CREATE TABLE IF NOT EXISTS below, otherwise that
+// statement creates an empty tbl_news_data first and this rename never fires.
+const tableNames = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+if (tableNames.includes('tbl_national_news') && !tableNames.includes('tbl_news_data')) {
+  db.exec('ALTER TABLE tbl_national_news RENAME TO tbl_news_data');
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS interactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,8 +47,9 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS tbl_national_news (
+  CREATE TABLE IF NOT EXISTS tbl_news_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    news_api_id INTEGER,
     headline TEXT NOT NULL,
     source TEXT DEFAULT '',
     summary TEXT DEFAULT '',
@@ -54,6 +63,21 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL
+  );
+
+  -- Registry of news sources/KPIs. Each live row becomes one panel on the
+  -- dashboard, fetched from api_url and tagged into tbl_news_data via news_api_id.
+  CREATE TABLE IF NOT EXISTS tbl_news_kpi_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME DEFAULT NULL,
+    live INTEGER NOT NULL CHECK(live IN (0, 1)) DEFAULT 1,
+    logo TEXT DEFAULT '',
+    name TEXT NOT NULL,
+    tag TEXT DEFAULT '',
+    api_url TEXT NOT NULL,
+    api_name TEXT DEFAULT ''
   );
 
   DROP TABLE IF EXISTS news_interactions;
@@ -77,22 +101,45 @@ db.exec(`
   );
 `);
 
-// Migrations: add columns if upgrading from an older tbl_national_news
-const newsCols = db.prepare('PRAGMA table_info(tbl_national_news)').all().map(c => c.name);
+// Migrations: add columns if upgrading from an older tbl_news_data
+const newsCols = db.prepare('PRAGMA table_info(tbl_news_data)').all().map(c => c.name);
 if (!newsCols.includes('clicked_on_more')) {
-  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN clicked_on_more INTEGER NOT NULL DEFAULT 0 CHECK(clicked_on_more IN (0, 1))`);
+  db.exec(`ALTER TABLE tbl_news_data ADD COLUMN clicked_on_more INTEGER NOT NULL DEFAULT 0 CHECK(clicked_on_more IN (0, 1))`);
 }
 if (!newsCols.includes('live')) {
   // 1 = currently rendered on the dashboard right now, 0 = was shown before but isn't on screen anymore
-  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN live INTEGER NOT NULL DEFAULT 1 CHECK(live IN (0, 1))`);
+  db.exec(`ALTER TABLE tbl_news_data ADD COLUMN live INTEGER NOT NULL DEFAULT 1 CHECK(live IN (0, 1))`);
 }
 if (!newsCols.includes('news_date')) {
   // The article's actual publish date (from the feed), distinct from created_at (when we stored the row)
-  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN news_date DATETIME`);
+  db.exec(`ALTER TABLE tbl_news_data ADD COLUMN news_date DATETIME`);
 }
 if (!newsCols.includes('shown')) {
   // Most recent interaction: 0 displayed/no interaction, 1 link opened, 2 more clicked, 3 liked, 4 disliked, 5 removed/skipped
-  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN shown INTEGER NOT NULL DEFAULT 0 CHECK(shown IN (0, 1, 2, 3, 4, 5))`);
+  db.exec(`ALTER TABLE tbl_news_data ADD COLUMN shown INTEGER NOT NULL DEFAULT 0 CHECK(shown IN (0, 1, 2, 3, 4, 5))`);
+}
+if (!newsCols.includes('news_api_id')) {
+  // Which tbl_news_kpi_data row this article came from
+  db.exec(`ALTER TABLE tbl_news_data ADD COLUMN news_api_id INTEGER`);
+}
+
+// Seed news KPIs on first run — National + Tech, both via Google News RSS (no key, no quota)
+const { n: kpiCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_kpi_data').get();
+if (kpiCount === 0) {
+  const insertKpi = db.prepare(`
+    INSERT INTO tbl_news_kpi_data (logo, name, tag, api_url, api_name, live)
+    VALUES (?, ?, ?, ?, ?, 1)
+  `);
+  insertKpi.run(
+    '📰', 'National News', 'India',
+    'https://news.google.com/rss/headlines/section/geo/India?hl=en-IN&gl=IN&ceid=IN:en',
+    'Google News RSS'
+  );
+  insertKpi.run(
+    '💻', 'Tech News', 'Technology',
+    'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-IN&gl=IN&ceid=IN:en',
+    'Google News RSS'
+  );
 }
 
 // Seed permanent cities on first run — these used to live in static/config.json

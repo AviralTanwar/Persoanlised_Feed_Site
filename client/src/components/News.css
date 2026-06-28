@@ -1,10 +1,9 @@
-/* ── Outer News card: National + Tech side by side, mirroring Weather's wgrid ── */
+/* ── Outer News card: one panel per live tbl_news_kpi_data row, mirroring Weather's wgrid ── */
 .newsgrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 1.2rem;
 }
-@media (max-width: 1024px) { .newsgrid { grid-template-columns: 1fr; } }
 
 .news-panel { min-width: 0; }
 

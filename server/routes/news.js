@@ -39,66 +39,69 @@ function toSqliteDate(pubDate) {
   return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
 }
 
-// Google News RSS — no API key, no quota, updated within minutes of
-// publication (unlike NewsAPI's free tier, which is ~24h delayed and
-// dominated by whichever single outlet it crawled most that day). Each
-// item already names its source outlet, so this is naturally multi-source.
-const FEED_URL = process.env.GOOGLE_NEWS_RSS_URL;
+// Generic Google-News-RSS-shaped feed parser. Every KPI in tbl_news_kpi_data
+// currently points at a Google News RSS URL, but this only assumes standard
+// RSS <item> structure — any RSS feed works the same way.
+function parseFeed(xml) {
+  const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+  const seen = new Set();
+  return blocks
+    .map((block, i) => {
+      const rawTitle = decodeEntities(tag(block, 'title'));
+      const src   = decodeEntities(tag(block, 'source')) || 'Unknown';
+      const title = rawTitle.replace(/ - [^-]+$/, '') || rawTitle;
+      const link  = tag(block, 'link').trim() || `n${i}`;
+      const desc  = stripTags(tag(block, 'description')).slice(0, 220);
+      const pubDate = tag(block, 'pubDate');
+      return {
+        id:   link,
+        title,
+        src,
+        desc,
+        time: timeAgo(pubDate),
+        url:  link,
+        newsDate: toSqliteDate(pubDate),
+      };
+    })
+    .filter(a => {
+      if (!a.title) return false;
+      if (seen.has(a.id)) return false;
+      seen.add(a.id);
+      return true;
+    });
+}
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
-let cache = { data: null, expiresAt: 0 };
+const cacheByKpi = new Map(); // kpiId -> { data, expiresAt }
 
-router.get('/', async (req, res) => {
-  if (!FEED_URL) return res.status(500).json({ error: 'GOOGLE_NEWS_RSS_URL not configured' });
+router.get('/:kpiId', async (req, res) => {
+  const kpiId = Number(req.params.kpiId);
+  const kpi = db.prepare('SELECT * FROM tbl_news_kpi_data WHERE id = ? AND deleted_at IS NULL').get(kpiId);
+  if (!kpi) return res.status(404).json({ error: 'Unknown news KPI' });
+  if (!kpi.live) return res.status(403).json({ error: 'This news KPI is not live' });
 
   const count = Math.min(Number(req.query.count || req.query.pageSize) || 20, 38);
 
-  if (cache.data && cache.expiresAt > Date.now()) {
-    return res.json(cache.data.slice(0, count));
+  const cached = cacheByKpi.get(kpiId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return res.json(cached.data.slice(0, count));
   }
 
   try {
-    const response = await fetch(FEED_URL, {
+    const response = await fetch(kpi.api_url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
     if (!response.ok) return res.status(502).json({ error: `Feed returned ${response.status}` });
     const xml = await response.text();
+    const articles = parseFeed(xml);
 
-    const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
-    const seen = new Set();
-    const articles = blocks
-      .map((block, i) => {
-        const rawTitle = decodeEntities(tag(block, 'title'));
-        const src   = decodeEntities(tag(block, 'source')) || 'Unknown';
-        const title = rawTitle.replace(/ - [^-]+$/, '') || rawTitle;
-        const link  = tag(block, 'link').trim() || `n${i}`;
-        const desc  = stripTags(tag(block, 'description')).slice(0, 220);
-        const pubDate = tag(block, 'pubDate');
-        return {
-          id:   link,
-          title,
-          src,
-          desc,
-          time: timeAgo(pubDate),
-          url:  link,
-          newsDate: toSqliteDate(pubDate),
-        };
-      })
-      .filter(a => {
-        if (!a.title) return false;
-        if (seen.has(a.id)) return false;
-        seen.add(a.id);
-        return true;
-      });
-
-    // Never show an article that's already been displayed before (any row
-    // existing in tbl_national_news means it was shown at some point).
+    // Never re-show an article already displayed for this KPI before.
     const alreadyShown = new Set(
-      db.prepare('SELECT link FROM tbl_national_news').all().map(r => r.link)
+      db.prepare('SELECT link FROM tbl_news_data WHERE news_api_id = ?').all(kpiId).map(r => r.link)
     );
     const freshArticles = articles.filter(a => !alreadyShown.has(a.id));
 
-    cache = { data: freshArticles, expiresAt: Date.now() + CACHE_TTL_MS };
+    cacheByKpi.set(kpiId, { data: freshArticles, expiresAt: Date.now() + CACHE_TTL_MS });
     res.json(freshArticles.slice(0, count));
   } catch (err) {
     res.status(502).json({ error: err.message || 'Failed to fetch news' });

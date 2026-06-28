@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const weatherRouter = require('./routes/weather');
 const newsRouter = require('./routes/news');
-const hnRouter = require('./routes/hn');
+const newsKpisRouter = require('./routes/newsKpis');
 const staticRouter = require('./routes/staticData');
 const improvementsRouter    = require('./routes/improvements');
 const newsInteractionsRouter = require('./routes/newsInteractions');
@@ -20,7 +20,7 @@ app.use(express.json());
 
 app.use('/api/weather', weatherRouter);
 app.use('/api/news', newsRouter);
-app.use('/api/hn', hnRouter);
+app.use('/api/news-kpis', newsKpisRouter);
 app.use('/api/static', staticRouter);
 app.use('/api/improvements', improvementsRouter);
 app.use('/api/reactions',   newsInteractionsRouter);

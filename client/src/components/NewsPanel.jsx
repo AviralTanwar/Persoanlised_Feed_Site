@@ -3,7 +3,11 @@ import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import './News.css'
 
-export default function NationalNews() {
+// Generic news panel — one instance per live row in tbl_news_kpi_data.
+// `kpi` = { id, logo, name, tag }. All interactions write into tbl_news_data
+// tagged with news_api_id = kpi.id, so every source shares the same table
+// but stays independently dedup'd and queryable.
+export default function NewsPanel({ kpi }) {
   const [visible, setVisible]     = useState([])
   const [reactions, setReactions] = useState({})
   const [loading, setLoading]     = useState(true)
@@ -20,7 +24,7 @@ export default function NationalNews() {
   function load(silent = false) {
     if (!silent) { setLoading(true); setError(null) }
 
-    fetch(`/api/news?count=20&_t=${Date.now()}`)
+    fetch(`/api/news/${kpi.id}?count=20&_t=${Date.now()}`)
       .then(r => r.json())
       .then(data => {
         if (!Array.isArray(data)) throw new Error(data.error || 'Bad response')
@@ -36,7 +40,7 @@ export default function NationalNews() {
       .finally(() => { if (!silent) setLoading(false) })
 
     if (!silent) {
-      fetch('/api/reactions')
+      fetch(`/api/reactions?kpiId=${kpi.id}`)
         .then(r => r.json())
         .then(d => { if (d && typeof d === 'object') setReactions(d) })
         .catch(() => {})
@@ -47,12 +51,12 @@ export default function NationalNews() {
     load()
     const id = setInterval(() => load(true), 5 * 60 * 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [kpi.id])
 
   // Whenever the on-screen set changes, write through to the DB: newly
   // displayed articles get live=1 (inserted if new), articles that left
   // the screen get live=0. This is what makes "every article ever shown"
-  // queryable in tbl_national_news regardless of whether it was reacted to.
+  // queryable in tbl_news_data regardless of whether it was reacted to.
   useEffect(() => {
     const prevIds = new Set(prevVisibleRef.current.map(a => String(a.id)))
     const nextIds = new Set(visible.map(a => String(a.id)))
@@ -86,6 +90,7 @@ export default function NationalNews() {
       body: JSON.stringify({
         link: id, headline: article.title,
         source: article.src, summary: article.desc || '',
+        news_api_id: kpi.id,
         ...fields,
       }),
     }).catch(() => {})
@@ -191,9 +196,9 @@ export default function NationalNews() {
   return (
     <div className="news-panel">
       <SectionHeader
-        icon="📰"
-        title="National News"
-        right={<Chip color="var(--peach)" small>India</Chip>}
+        icon={kpi.logo}
+        title={kpi.name}
+        right={kpi.tag ? <Chip color="var(--peach)" small>{kpi.tag}</Chip> : null}
       />
 
       {loading && <p className="empty-msg">Loading headlines…</p>}
