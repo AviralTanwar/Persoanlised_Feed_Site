@@ -29,7 +29,7 @@ export default function NewsPanel({ kpi }) {
       .then(data => {
         if (!Array.isArray(data)) throw new Error(data.error || 'Bad response')
         const shuffled  = [...data].sort(() => Math.random() - .5)
-        const showCount = Math.min(8, Math.max(1, shuffled.length - 2))
+        const showCount = Math.min(8, shuffled.length)
         const initial   = shuffled.slice(0, showCount)
         reserveRef.current = shuffled.slice(showCount).reverse()
         initialRef.current = new Set(initial.map(a => String(a.id)))
