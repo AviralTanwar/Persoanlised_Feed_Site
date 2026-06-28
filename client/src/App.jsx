@@ -15,8 +15,14 @@ import YearKPI      from './components/YearKPI'
 
 import './App.css'
 
-const DEFAULT_TWEAKS = { accent: '#fab387', density: 'compact', clock: '24h' }
-const ACCENT_OPTS    = ['#89b4fa', '#cba6f7', '#fab387', '#94e2d5']
+const DEFAULT_TWEAKS = { accent: 'peach', density: 'compact', clock: '24h' }
+const ACCENT_KEYS    = ['blue', 'mauve', 'peach', 'teal']
+// Same hues, but the light variants are saturated enough to read on a light
+// background — the dark-mode pastels (e.g. peach #fab387) fail contrast there.
+const ACCENT_PALETTE = {
+  dark:  { blue: '#89b4fa', mauve: '#cba6f7', peach: '#fab387', teal: '#94e2d5' },
+  light: { blue: '#1e66f5', mauve: '#8839ef', peach: '#fe640b', teal: '#179299' },
+}
 
 export default function App() {
   const [theme,  setTheme]  = useLocalStorage('theme',  'dark')
@@ -39,12 +45,13 @@ export default function App() {
 
   // ── Apply tweaks as CSS vars ──
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent', tweaks.accent)
+    const key = ACCENT_KEYS.includes(tweaks.accent) ? tweaks.accent : 'peach'
+    document.documentElement.style.setProperty('--accent', ACCENT_PALETTE[theme][key])
     const v = tweaks.density === 'compact' ? '.75rem' : '1.2rem'
     const h = tweaks.density === 'compact' ? '.9rem'  : '1.4rem'
     document.documentElement.style.setProperty('--cp-v', v)
     document.documentElement.style.setProperty('--cp-h', h)
-  }, [tweaks])
+  }, [tweaks, theme])
 
   // ── Aurora mouse parallax ──
   useEffect(() => {
@@ -133,11 +140,11 @@ export default function App() {
           <div className="tweaks-sec">
             <div className="tweaks-lbl">Accent Color</div>
             <div className="tweaks-swatches">
-              {ACCENT_OPTS.map(a => (
+              {ACCENT_KEYS.map(a => (
                 <button
                   key={a}
                   className={`swatch${tweaks.accent === a ? ' on' : ''}`}
-                  style={{ background: a }}
+                  style={{ background: ACCENT_PALETTE[theme][a] }}
                   onClick={() => setTweak('accent', a)}
                 />
               ))}

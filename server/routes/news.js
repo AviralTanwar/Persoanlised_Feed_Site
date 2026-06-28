@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../db');
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,16 +29,25 @@ function tag(block, name) {
   return m ? m[1] : '';
 }
 
+// SQLite DATETIME columns expect 'YYYY-MM-DD HH:MM:SS' (same format CURRENT_TIMESTAMP writes)
+function toSqliteDate(pubDate) {
+  const d = new Date(pubDate);
+  if (isNaN(d)) return null;
+  return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+}
+
 // Google News RSS — no API key, no quota, updated within minutes of
 // publication (unlike NewsAPI's free tier, which is ~24h delayed and
 // dominated by whichever single outlet it crawled most that day). Each
 // item already names its source outlet, so this is naturally multi-source.
-const FEED_URL = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
+const FEED_URL = process.env.GOOGLE_NEWS_RSS_URL;
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
 let cache = { data: null, expiresAt: 0 };
 
 router.get('/', async (req, res) => {
+  if (!FEED_URL) return res.status(500).json({ error: 'GOOGLE_NEWS_RSS_URL not configured' });
+
   const count = Math.min(Number(req.query.count || req.query.pageSize) || 20, 38);
 
   if (cache.data && cache.expiresAt > Date.now()) {
@@ -68,6 +78,7 @@ router.get('/', async (req, res) => {
           desc,
           time: timeAgo(pubDate),
           url:  link,
+          newsDate: toSqliteDate(pubDate),
         };
       })
       .filter(a => {
@@ -77,8 +88,15 @@ router.get('/', async (req, res) => {
         return true;
       });
 
-    cache = { data: articles, expiresAt: Date.now() + CACHE_TTL_MS };
-    res.json(articles.slice(0, count));
+    // Never show an article that's already been displayed before (any row
+    // existing in tbl_national_news means it was shown at some point).
+    const alreadyShown = new Set(
+      db.prepare('SELECT link FROM tbl_national_news').all().map(r => r.link)
+    );
+    const freshArticles = articles.filter(a => !alreadyShown.has(a.id));
+
+    cache = { data: freshArticles, expiresAt: Date.now() + CACHE_TTL_MS };
+    res.json(freshArticles.slice(0, count));
   } catch (err) {
     res.status(502).json({ error: err.message || 'Failed to fetch news' });
   }

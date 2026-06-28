@@ -12,10 +12,11 @@ export default function NationalNews() {
   const [open, setOpen]           = useState(null)
   const [exiting, setExiting]     = useState({})  // id -> 'out' | 'exit-right' | 'exit-left'
 
-  const reserveRef = useRef([])          // LIFO stack
-  const initialRef = useRef(new Set())   // ids in first batch (for stagger anim)
-  const dragRef    = useRef({})          // per-item pointer state
-  const noClickRef = useRef(false)       // suppress click after swipe
+  const reserveRef     = useRef([])          // LIFO stack
+  const initialRef     = useRef(new Set())   // ids in first batch (for stagger anim)
+  const dragRef        = useRef({})          // per-item pointer state
+  const noClickRef     = useRef(false)       // suppress click after swipe
+  const prevVisibleRef = useRef([])          // previous `visible` snapshot, to diff live state
 
   function load(silent = false) {
     if (!silent) { setLoading(true); setError(null) }
@@ -49,6 +50,18 @@ export default function NationalNews() {
     return () => clearInterval(id)
   }, [])
 
+  // Whenever the on-screen set changes, write through to the DB: newly
+  // displayed articles get live=1 (inserted if new), articles that left
+  // the screen get live=0. This is what makes "every article ever shown"
+  // queryable in tbl_national_news regardless of whether it was reacted to.
+  useEffect(() => {
+    const prevIds = new Set(prevVisibleRef.current.map(a => String(a.id)))
+    const nextIds = new Set(visible.map(a => String(a.id)))
+    visible.forEach(a => { if (!prevIds.has(String(a.id))) markLive(a, 1) })
+    prevVisibleRef.current.forEach(a => { if (!nextIds.has(String(a.id))) markLive(a, 0) })
+    prevVisibleRef.current = visible
+  }, [visible])
+
   function dismissItem(id, mode = 'out') {
     setOpen(o => o === id ? null : o)
     setExiting(e => ({ ...e, [id]: mode }))
@@ -79,31 +92,39 @@ export default function NationalNews() {
     }).catch(() => {})
   }
 
+  // shown codes: 0 displayed/none, 1 link opened, 2 more clicked, 3 liked, 4 disliked, 5 removed/skipped
+  function markLive(article, live) {
+    saveInteraction(article, {
+      live,
+      news_date: article.newsDate || null,
+    })
+  }
+
   function react(article, type) {
     const id = String(article.id)
     if (exiting[id]) return
     const response = type === 'like' ? 1 : -1
     setReactions(r => ({ ...r, [id]: { ...r[id], response } }))
     dismissItem(id, 'out')
-    saveInteraction(article, { response })
+    saveInteraction(article, { response, shown: type === 'like' ? 3 : 4 })
   }
 
   function recordSkip(article) {
     const id = String(article.id)
     setReactions(r => ({ ...r, [id]: { ...r[id], response: 0 } }))
-    saveInteraction(article, { response: 0 })
+    saveInteraction(article, { response: 0, shown: 5 })
   }
 
   function recordLinkOpen(article) {
     const id = String(article.id)
     setReactions(r => ({ ...r, [id]: { ...r[id], link_open: 1 } }))
-    saveInteraction(article, { link_open: 1 })
+    saveInteraction(article, { link_open: 1, shown: 1 })
   }
 
   function recordMoreClick(article) {
     const id = String(article.id)
     setReactions(r => ({ ...r, [id]: { ...r[id], clicked_on_more: 1 } }))
-    saveInteraction(article, { clicked_on_more: 1 })
+    saveInteraction(article, { clicked_on_more: 1, shown: 2 })
   }
 
   // ── Swipe gesture (pointer events) ──

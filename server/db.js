@@ -47,6 +47,10 @@ db.exec(`
     link TEXT NOT NULL UNIQUE,
     response INTEGER NOT NULL CHECK(response IN (-1, 0, 1)) DEFAULT 0,
     link_open INTEGER NOT NULL CHECK(link_open IN (0, 1)) DEFAULT 0,
+    clicked_on_more INTEGER NOT NULL CHECK(clicked_on_more IN (0, 1)) DEFAULT 0,
+    live INTEGER NOT NULL CHECK(live IN (0, 1)) DEFAULT 1,
+    news_date DATETIME,
+    shown INTEGER NOT NULL CHECK(shown IN (0, 1, 2, 3, 4, 5)) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL
@@ -73,10 +77,22 @@ db.exec(`
   );
 `);
 
-// Migration: add clicked_on_more if upgrading from an older tbl_national_news
+// Migrations: add columns if upgrading from an older tbl_national_news
 const newsCols = db.prepare('PRAGMA table_info(tbl_national_news)').all().map(c => c.name);
 if (!newsCols.includes('clicked_on_more')) {
   db.exec(`ALTER TABLE tbl_national_news ADD COLUMN clicked_on_more INTEGER NOT NULL DEFAULT 0 CHECK(clicked_on_more IN (0, 1))`);
+}
+if (!newsCols.includes('live')) {
+  // 1 = currently rendered on the dashboard right now, 0 = was shown before but isn't on screen anymore
+  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN live INTEGER NOT NULL DEFAULT 1 CHECK(live IN (0, 1))`);
+}
+if (!newsCols.includes('news_date')) {
+  // The article's actual publish date (from the feed), distinct from created_at (when we stored the row)
+  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN news_date DATETIME`);
+}
+if (!newsCols.includes('shown')) {
+  // Most recent interaction: 0 displayed/no interaction, 1 link opened, 2 more clicked, 3 liked, 4 disliked, 5 removed/skipped
+  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN shown INTEGER NOT NULL DEFAULT 0 CHECK(shown IN (0, 1, 2, 3, 4, 5))`);
 }
 
 // Seed permanent cities on first run — these used to live in static/config.json
