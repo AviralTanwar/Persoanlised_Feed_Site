@@ -73,6 +73,12 @@ db.exec(`
   );
 `);
 
+// Migration: add clicked_on_more if upgrading from an older tbl_national_news
+const newsCols = db.prepare('PRAGMA table_info(tbl_national_news)').all().map(c => c.name);
+if (!newsCols.includes('clicked_on_more')) {
+  db.exec(`ALTER TABLE tbl_national_news ADD COLUMN clicked_on_more INTEGER NOT NULL DEFAULT 0 CHECK(clicked_on_more IN (0, 1))`);
+}
+
 // Seed permanent cities on first run — these used to live in static/config.json
 const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM weathers').get();
 if (weatherCount === 0) {

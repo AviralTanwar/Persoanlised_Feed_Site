@@ -100,6 +100,12 @@ export default function NationalNews() {
     saveInteraction(article, { link_open: 1 })
   }
 
+  function recordMoreClick(article) {
+    const id = String(article.id)
+    setReactions(r => ({ ...r, [id]: { ...r[id], clicked_on_more: 1 } }))
+    saveInteraction(article, { clicked_on_more: 1 })
+  }
+
   // ── Swipe gesture (pointer events) ──
   function onPointerDown(e, id) {
     if (exiting[id]) return
@@ -204,7 +210,9 @@ export default function NationalNews() {
             >
               <div className="news-body" onClick={() => {
                 if (noClickRef.current) return
-                setOpen(isOpen ? null : id)
+                const willOpen = !isOpen
+                setOpen(willOpen ? id : null)
+                if (willOpen) recordMoreClick(a)
               }}>
                 <a
                   className="news-title"
