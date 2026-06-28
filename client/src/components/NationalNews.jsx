@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import './News.css'
@@ -190,11 +189,11 @@ export default function NationalNews() {
   }
 
   return (
-    <Card>
+    <div className="news-panel">
       <SectionHeader
         icon="📰"
         title="National News"
-        right={<Chip color="var(--peach)">India</Chip>}
+        right={<Chip color="var(--peach)" small>India</Chip>}
       />
 
       {loading && <p className="empty-msg">Loading headlines…</p>}
@@ -249,25 +248,35 @@ export default function NationalNews() {
                   <span>{a.src}</span>
                   <span className="dot">·</span>
                   <span>{a.time}</span>
-                  <span className="dot">·</span>
-                  <span className="news-toggle">{isOpen ? '▲ less' : '▼ more'}</span>
                 </div>
                 <div className={`news-desc-wrap${isOpen ? ' open' : ''}`}>
                   <div className="news-desc">{a.desc}</div>
                 </div>
               </div>
               <div className="news-actions" onPointerDown={e => e.stopPropagation()}>
-                <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} onClick={() => react(a, 'like')}>👍</button>
-                <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(a, 'dislike')}>👎</button>
-                {a.url !== '#' && (
-                  <a className="rb" href={a.url} target="_blank" rel="noreferrer" title="Open"
-                    onClick={ev => { if (noClickRef.current) ev.preventDefault(); else recordLinkOpen(a) }}>🔗</a>
-                )}
+                <button
+                  className="news-more-btn"
+                  onClick={() => {
+                    const willOpen = !isOpen
+                    setOpen(willOpen ? id : null)
+                    if (willOpen) recordMoreClick(a)
+                  }}
+                >
+                  {isOpen ? '▲ Less' : '▼ More'}
+                </button>
+                <div className="news-action-group">
+                  <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} title="Like" onClick={() => react(a, 'like')}>👍</button>
+                  <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} title="Dislike" onClick={() => react(a, 'dislike')}>👎</button>
+                  {a.url !== '#' && (
+                    <a className="rb rb-open" href={a.url} target="_blank" rel="noreferrer" title="Open article"
+                      onClick={ev => { if (noClickRef.current) ev.preventDefault(); else recordLinkOpen(a) }}>🔗 Open</a>
+                  )}
+                </div>
               </div>
             </div>
           )
         })}
       </div>
-    </Card>
+    </div>
   )
 }

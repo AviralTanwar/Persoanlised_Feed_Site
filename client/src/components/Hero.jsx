@@ -25,6 +25,7 @@ export default function Hero({ clock }) {
         <span className="live-dot" />
         {greeting} · Live
       </div>
+      <span className="hero-scanline" aria-hidden="true" />
       <div className="hero-date">
         {weekday},<br />{rest}
       </div>

@@ -5,8 +5,7 @@ import SideNav      from './components/layout/SideNav'
 import Hero         from './components/Hero'
 import QuoteBanner  from './components/QuoteBanner'
 import Weather      from './components/Weather'
-import NationalNews from './components/NationalNews'
-import TechNews     from './components/TechNews'
+import News         from './components/News'
 import OneNote      from './components/OneNote'
 import YouTube      from './components/YouTube'
 import WebPages     from './components/WebPages'
@@ -189,14 +188,9 @@ export default function App() {
           <Weather />
         </section>
 
-        {/* News row */}
+        {/* News */}
         <section id="news" className="sec reveal" ref={setRef('news')}>
-          <div className="newsrow">
-            <NationalNews />
-            <div id="tech" ref={setRef('tech')} style={{ scrollMarginTop: '1rem' }}>
-              <TechNews />
-            </div>
-          </div>
+          <News techRef={setRef('tech')} />
         </section>
 
         {/* OneNote */}

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import Chip from './shared/Chip'
 import './News.css'
@@ -140,7 +139,7 @@ export default function TechNews() {
   }
 
   return (
-    <Card>
+    <div className="news-panel">
       <SectionHeader
         icon="💻"
         title="Tech News"
@@ -191,27 +190,29 @@ export default function TechNews() {
                     if (s.url) e.stopPropagation()
                   }}
                 >{s.title}</a>
-                {/* Always show source · time · ▼ more to match National News */}
                 <div className="news-meta">
                   <span>{s.src}</span>
                   <span className="dot">·</span>
                   <span>{s.time}</span>
-                  <span className="dot">·</span>
-                  <span className="news-toggle">{isOpen ? '▲ less' : '▼ more'}</span>
                 </div>
                 <div className={`news-desc-wrap${isOpen ? ' open' : ''}`}>
                   <div className="news-desc">{s.desc}</div>
                 </div>
               </div>
-              {/* No link button in Tech News per user preference */}
+              {/* No link-open button in Tech News per user preference */}
               <div className="news-actions" onPointerDown={e => e.stopPropagation()}>
-                <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} onClick={() => react(s, 'like')}>👍</button>
-                <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} onClick={() => react(s, 'dislike')}>👎</button>
+                <button className="news-more-btn" onClick={() => setOpen(isOpen ? null : id)}>
+                  {isOpen ? '▲ Less' : '▼ More'}
+                </button>
+                <div className="news-action-group">
+                  <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} title="Like" onClick={() => react(s, 'like')}>👍</button>
+                  <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} title="Dislike" onClick={() => react(s, 'dislike')}>👎</button>
+                </div>
               </div>
             </div>
           )
         })}
       </div>
-    </Card>
+    </div>
   )
 }

@@ -28,7 +28,7 @@ export default function YearKPI() {
       </div>
 
       <div className="ykpi-mid">
-        <div className="ykpi-title">Year progress — {year}</div>
+        <div className="ykpi-title">Year progress - {year}</div>
         <div className="ykpi-bar-track">
           <div className="ykpi-bar-fill" style={{ width: `${pctFilled}%`, background: color }} />
         </div>

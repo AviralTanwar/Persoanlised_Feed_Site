@@ -279,15 +279,9 @@ a:hover { opacity: .8; }
 
 .hero-band {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.2rem;
-}
-
-.newsrow {
-  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  margin-bottom: 1.2rem;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -429,7 +423,6 @@ html.js-anim .reveal.in     { opacity: 1; transform: none; }
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════════════ */
-@media (max-width: 1024px) { .newsrow { grid-template-columns: 1fr; } }
 @media (max-width: 860px)  { .hero-band { grid-template-columns: 1fr; } }
 @media (max-width: 600px)  { .content { padding: 4.6rem 1rem 2rem; } }
 @media (prefers-reduced-motion: reduce) {

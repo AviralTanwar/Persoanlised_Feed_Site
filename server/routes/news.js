@@ -21,7 +21,10 @@ function decodeEntities(str) {
 }
 
 function stripTags(html) {
-  return decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  // Google's <description> is HTML entity-encoded (&lt;ol&gt;...), so entities
+  // must be decoded into real tags BEFORE stripping — stripping first finds no
+  // literal "<" to match and leaves the tags to reappear after decoding.
+  return decodeEntities(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function tag(block, name) {
