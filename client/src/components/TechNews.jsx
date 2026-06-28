@@ -182,6 +182,7 @@ export default function TechNews() {
               }}>
                 <a
                   className="news-title"
+                  draggable="false"
                   href={s.url || undefined}
                   target={s.url ? '_blank' : undefined}
                   rel="noreferrer"

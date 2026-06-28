@@ -236,6 +236,7 @@ export default function NationalNews() {
               }}>
                 <a
                   className="news-title"
+                  draggable="false"
                   href={a.url || undefined}
                   target={a.url ? '_blank' : undefined}
                   rel="noreferrer"
@@ -268,7 +269,7 @@ export default function NationalNews() {
                   <button className={`rb${rx === 'like'    ? ' liked'    : ''}`} title="Like" onClick={() => react(a, 'like')}>👍</button>
                   <button className={`rb${rx === 'dislike' ? ' disliked' : ''}`} title="Dislike" onClick={() => react(a, 'dislike')}>👎</button>
                   {a.url !== '#' && (
-                    <a className="rb rb-open" href={a.url} target="_blank" rel="noreferrer" title="Open article"
+                    <a className="rb rb-open" draggable="false" href={a.url} target="_blank" rel="noreferrer" title="Open article"
                       onClick={ev => { if (noClickRef.current) ev.preventDefault(); else recordLinkOpen(a) }}>🔗 Open</a>
                   )}
                 </div>
