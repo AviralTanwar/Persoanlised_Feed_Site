@@ -267,7 +267,7 @@ export default function NewsPanel({ kpi }) {
             }}
           >{a.title}</a>
           <div className="news-meta">
-            <span>{a.src}</span>
+            <span className="news-source">{a.src}</span>
             <span className="dot">·</span>
             <span>{a.time}</span>
           </div>

@@ -54,20 +54,21 @@
   margin-bottom: 10px;
 }
 
-/* ── National News ── */
-.news-list { display: flex; flex-direction: column; gap: 10px; }
+/* ── News list + cards ── */
+.news-list { display: flex; flex-direction: column; gap: 8px; }
 
 .news-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 14px;
+  gap: 10px;
+  padding: 14px 14px 10px 16px;
+  border-radius: 16px;
   border: 1px solid var(--card-border);
-  background: color-mix(in srgb, var(--base) 40%, transparent);
+  border-left: 3px solid transparent;
+  background: color-mix(in srgb, var(--s0) 55%, transparent);
   animation: fadeUp .35s ease both;
   animation-delay: var(--d, 0ms);
-  max-height: 340px;
+  max-height: 360px;
   overflow: hidden;
   position: relative;
   touch-action: pan-y;
@@ -80,9 +81,16 @@
               margin-bottom .4s ease,
               border-width .4s ease,
               border-color .2s ease,
+              border-left-color .2s ease,
+              box-shadow .2s ease,
               background .2s ease;
 }
-.news-item:hover { border-color: var(--s1); background: color-mix(in srgb, var(--base) 60%, transparent); }
+.news-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--card-border));
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--s0) 80%, transparent);
+  box-shadow: 0 4px 20px -6px color-mix(in srgb, var(--accent) 20%, transparent);
+}
 
 /* like / dislike exit — scale + fade + height collapse, all at once */
 .news-item--out {
@@ -121,21 +129,30 @@
 .news-item--exit-left  { transform: translateX(-110%) !important; }
 
 .news-body   { flex: 1; min-width: 0; cursor: pointer; }
-/* Text stays neutral always — no accent-color text shift here, since every
-   accent hue would need its own contrast check against every theme. Hover
-   feedback comes from the underline only. */
-.news-title  { font-size: 13.5px; font-weight: 700; color: var(--text2); line-height: 1.45; transition: opacity .15s; text-decoration: none; display: block; }
-.news-title:hover { opacity: .8; text-decoration: underline; }
+.news-title  { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.5; transition: color .15s; text-decoration: none; display: block; }
+.news-title:hover { color: var(--accent); }
 
 .news-meta {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   font-size: 11px;
   color: var(--ov0);
   flex-wrap: wrap;
+  margin-top: -2px;
 }
 .dot { opacity: .35; }
+
+.news-source {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 5px;
+  padding: 1px 7px;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
 
 .news-desc-wrap {
   display: grid;
@@ -164,16 +181,17 @@
 }
 
 .news-more-btn {
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--sub0);
   background: transparent;
-  border: 1px solid var(--s0);
-  border-radius: 8px;
-  padding: 5px 11px;
+  border: 1px solid var(--s1);
+  border-radius: 20px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: all .15s;
   font-family: inherit;
+  white-space: nowrap;
 }
 .news-more-btn:hover {
   border-color: var(--accent);
@@ -181,16 +199,39 @@
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-.news-action-group { display: flex; gap: 6px; }
+.news-action-group { display: flex; gap: 6px; align-items: center; }
 
 .rb {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 15px;
+  background: var(--s0);
+  border: 1px solid var(--s1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+  flex-shrink: 0;
 }
-.rb:hover { transform: translateY(-1px) scale(1.06); }
-.rb-open { font-size: 13px; font-weight: 700; width: auto; padding: 0 12px; gap: 5px; }
+.rb:hover { transform: scale(1.12) translateY(-1px); background: var(--s1); border-color: var(--s2); }
+.rb.liked    { background: color-mix(in srgb, var(--green) 18%, transparent); border-color: var(--green); }
+.rb.disliked { background: color-mix(in srgb, var(--red)   18%, transparent); border-color: var(--red);   }
+.rb-open {
+  width: auto;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+  gap: 5px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  text-decoration: none;
+}
+.rb-open:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
 
 /* ── Hacker News ── */
 .hn-list { max-height: 590px; overflow-y: auto; padding-right: 2px; }

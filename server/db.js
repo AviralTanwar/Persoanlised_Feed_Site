@@ -80,19 +80,7 @@ db.exec(`
     api_name TEXT DEFAULT ''
   );
 
-  -- Multiple feeds can roll into one KPI panel (e.g. National News pulls Top
-  -- Stories + Business + Sports + ... ) so the combined dedup pool stays big
-  -- enough that "never re-show a link" doesn't exhaust a single feed's ~50 items.
-  CREATE TABLE IF NOT EXISTS tbl_news_kpi_sources (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kpi_id INTEGER NOT NULL REFERENCES tbl_news_kpi_data(id),
-    label TEXT DEFAULT '',
-    api_url TEXT NOT NULL,
-    live INTEGER NOT NULL CHECK(live IN (0, 1)) DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    deleted_at DATETIME DEFAULT NULL
-  );
-
+  DROP TABLE IF EXISTS tbl_news_kpi_sources;
   DROP TABLE IF EXISTS news_interactions;
 
   CREATE TABLE IF NOT EXISTS web_notes (
@@ -155,38 +143,7 @@ if (kpiCount === 0) {
   );
 }
 
-// Backfill per-KPI source feeds — runs once, whether the KPIs were just seeded
-// above or already existed from before this table existed. More feeds per KPI
-// means a bigger combined dedup pool (each Google News section/search caps out
-// around 35-90 items, which "never re-show a link" burns through fast on its own).
-const { n: sourceCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_kpi_sources').get();
-if (sourceCount === 0) {
-  const insertSource = db.prepare(
-    'INSERT INTO tbl_news_kpi_sources (kpi_id, label, api_url) VALUES (?, ?, ?)'
-  );
-  const gnSection = (path) => `https://news.google.com/rss/headlines/section/${path}?hl=en-IN&gl=IN&ceid=IN:en`;
-  const gnSearch  = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-IN&gl=IN&ceid=IN:en`;
 
-  const national = db.prepare("SELECT id FROM tbl_news_kpi_data WHERE name = 'National News'").get();
-  if (national) {
-    insertSource.run(national.id, 'Top Stories', gnSection('geo/India'));
-    insertSource.run(national.id, 'Nation', gnSection('topic/NATION'));
-    insertSource.run(national.id, 'Business', gnSection('topic/BUSINESS'));
-    insertSource.run(national.id, 'Sports', gnSection('topic/SPORTS'));
-    insertSource.run(national.id, 'Entertainment', gnSection('topic/ENTERTAINMENT'));
-    insertSource.run(national.id, 'Science', gnSection('topic/SCIENCE'));
-    insertSource.run(national.id, 'Health', gnSection('topic/HEALTH'));
-  }
-
-  const tech = db.prepare("SELECT id FROM tbl_news_kpi_data WHERE name = 'Tech News'").get();
-  if (tech) {
-    insertSource.run(tech.id, 'Technology', gnSection('topic/TECHNOLOGY'));
-    insertSource.run(tech.id, 'Artificial Intelligence', gnSearch('artificial intelligence'));
-    insertSource.run(tech.id, 'Gadgets', gnSearch('gadgets smartphones'));
-    insertSource.run(tech.id, 'Startups', gnSearch('startup funding tech India'));
-    insertSource.run(tech.id, 'Cybersecurity', gnSearch('cybersecurity'));
-  }
-}
 
 // Seed permanent cities on first run — these used to live in static/config.json
 const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM weathers').get();

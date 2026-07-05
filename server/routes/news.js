@@ -21,9 +21,6 @@ function decodeEntities(str) {
 }
 
 function stripTags(html) {
-  // Google's <description> is HTML entity-encoded (&lt;ol&gt;...), so entities
-  // must be decoded into real tags BEFORE stripping — stripping first finds no
-  // literal "<" to match and leaves the tags to reappear after decoding.
   return decodeEntities(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
@@ -32,15 +29,12 @@ function tag(block, name) {
   return m ? m[1] : '';
 }
 
-// SQLite DATETIME columns expect 'YYYY-MM-DD HH:MM:SS' (same format CURRENT_TIMESTAMP writes)
 function toSqliteDate(pubDate) {
   const d = new Date(pubDate);
   if (isNaN(d)) return null;
   return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
 }
 
-// Generic RSS <item> parser — every source in tbl_news_kpi_sources is a
-// Google News RSS URL today, but any standard RSS feed parses the same way.
 function parseFeed(xml) {
   const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
   return blocks.map((block, i) => {
@@ -50,48 +44,8 @@ function parseFeed(xml) {
     const link  = tag(block, 'link').trim() || `n${i}`;
     const desc  = stripTags(tag(block, 'description')).slice(0, 220);
     const pubDate = tag(block, 'pubDate');
-    return {
-      id:   link,
-      title,
-      src,
-      desc,
-      time: timeAgo(pubDate),
-      url:  link,
-      newsDate: toSqliteDate(pubDate),
-    };
+    return { id: link, title, src, desc, time: timeAgo(pubDate), url: link, newsDate: toSqliteDate(pubDate) };
   }).filter(a => a.title);
-}
-
-async function fetchSource(url) {
-  try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-    });
-    if (!response.ok) return [];
-    return parseFeed(await response.text());
-  } catch {
-    return [];
-  }
-}
-
-// Merge every live source feed for a KPI into one deduped candidate list.
-async function fetchAllSources(kpiId, fallbackUrl) {
-  const sources = db.prepare(
-    'SELECT api_url FROM tbl_news_kpi_sources WHERE kpi_id = ? AND live = 1 AND deleted_at IS NULL'
-  ).all(kpiId);
-  const urls = sources.length ? sources.map(s => s.api_url) : [fallbackUrl];
-
-  const lists = await Promise.all(urls.map(fetchSource));
-  const seen = new Set();
-  const merged = [];
-  for (const list of lists) {
-    for (const a of list) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      merged.push(a);
-    }
-  }
-  return merged;
 }
 
 function dbRowToArticle(row) {
@@ -107,18 +61,17 @@ function dbRowToArticle(row) {
 }
 
 const CACHE_TTL_MS    = 15 * 60 * 1000;
-const NO_FRESH_TTL_MS = 2 * 60 * 1000; // short — recheck the live feeds again soon, but not on every swipe
-const cacheByKpi    = new Map(); // kpiId -> { data, expiresAt }
-const noFreshUntil  = new Map(); // kpiId -> timestamp
+const NO_FRESH_TTL_MS = 2 * 60 * 1000;
+const cacheByKpi   = new Map();
+const noFreshUntil = new Map();
 
 router.get('/:kpiId/old', (req, res) => {
   const kpiId = Number(req.params.kpiId);
-  const count = Math.min(Number(req.query.count || req.query.pageSize) || 20, 50);
+  const count = Math.min(Number(req.query.count) || 20, 50);
   const rows = db.prepare(`
     SELECT * FROM tbl_news_data
     WHERE news_api_id = ? AND deleted_at IS NULL AND response != 0
-    ORDER BY updated_at DESC
-    LIMIT ?
+    ORDER BY updated_at DESC LIMIT ?
   `).all(kpiId, count);
   res.json(rows.map(dbRowToArticle));
 });
@@ -129,7 +82,7 @@ router.get('/:kpiId', async (req, res) => {
   if (!kpi) return res.status(404).json({ error: 'Unknown news KPI' });
   if (!kpi.live) return res.status(403).json({ error: 'This news KPI is not live' });
 
-  const count = Math.min(Number(req.query.count || req.query.pageSize) || 20, 38);
+  const count = Math.min(Number(req.query.count) || 20, 38);
 
   try {
     const cached = cacheByKpi.get(kpiId);
@@ -137,45 +90,47 @@ router.get('/:kpiId', async (req, res) => {
       return res.json({ tier: 'fresh', articles: cached.data.slice(0, count) });
     }
 
-    const skipFresh = (noFreshUntil.get(kpiId) || 0) > Date.now();
-    if (!skipFresh) {
-      const merged = await fetchAllSources(kpiId, kpi.api_url);
-      const alreadyShown = new Set(
-        db.prepare('SELECT link FROM tbl_news_data WHERE news_api_id = ?').all(kpiId).map(r => r.link)
-      );
-      const freshArticles = merged.filter(a => !alreadyShown.has(a.id));
+    if ((noFreshUntil.get(kpiId) || 0) <= Date.now()) {
+      const response = await fetch(kpi.api_url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      });
+      if (!response.ok) return res.status(502).json({ error: `Feed returned ${response.status}` });
+      const articles = parseFeed(await response.text());
 
-      if (freshArticles.length > 0) {
-        cacheByKpi.set(kpiId, { data: freshArticles, expiresAt: Date.now() + CACHE_TTL_MS });
-        return res.json({ tier: 'fresh', articles: freshArticles.slice(0, count) });
+      // Only exclude articles you have explicitly reacted to (liked/disliked/skipped)
+      // or that are currently rendered on screen (live=1). Articles you were merely
+      // shown but ignored cycle back freely — prevents the exclusion set from growing
+      // without bound and strangling the feed pool over time.
+      const excluded = new Set(
+        db.prepare(`
+          SELECT link FROM tbl_news_data
+          WHERE news_api_id = ? AND deleted_at IS NULL AND (response != 0 OR live = 1)
+        `).all(kpiId).map(r => r.link)
+      );
+      const fresh = articles.filter(a => !excluded.has(a.id));
+
+      if (fresh.length > 0) {
+        cacheByKpi.set(kpiId, { data: fresh, expiresAt: Date.now() + CACHE_TTL_MS });
+        return res.json({ tier: 'fresh', articles: fresh.slice(0, count) });
       }
-      // Live feeds have nothing new right now — don't hit them again for a
-      // couple of minutes (e.g. while the user is rapidly swiping through a
-      // small fallback batch), just fall through to the DB tiers below.
       noFreshUntil.set(kpiId, Date.now() + NO_FRESH_TTL_MS);
     }
 
-    // Tier 1: shown before, never reacted to and never expanded — least "seen".
+    // Tier 1: seen before, no reaction, never expanded
     const unseenOld = db.prepare(`
       SELECT * FROM tbl_news_data
       WHERE news_api_id = ? AND deleted_at IS NULL AND response = 0 AND clicked_on_more = 0
-      ORDER BY news_date DESC
-      LIMIT ?
+      ORDER BY news_date DESC LIMIT ?
     `).all(kpiId, count);
-    if (unseenOld.length > 0) {
-      return res.json({ tier: 'unseen-old', articles: unseenOld.map(dbRowToArticle) });
-    }
+    if (unseenOld.length > 0) return res.json({ tier: 'unseen-old', articles: unseenOld.map(dbRowToArticle) });
 
-    // Tier 2: shown before, expanded but never reacted to.
+    // Tier 2: seen before, expanded, no reaction
     const glancedOld = db.prepare(`
       SELECT * FROM tbl_news_data
       WHERE news_api_id = ? AND deleted_at IS NULL AND response = 0 AND clicked_on_more = 1
-      ORDER BY news_date DESC
-      LIMIT ?
+      ORDER BY news_date DESC LIMIT ?
     `).all(kpiId, count);
-    if (glancedOld.length > 0) {
-      return res.json({ tier: 'glanced-old', articles: glancedOld.map(dbRowToArticle) });
-    }
+    if (glancedOld.length > 0) return res.json({ tier: 'glanced-old', articles: glancedOld.map(dbRowToArticle) });
 
     res.json({ tier: 'exhausted', articles: [] });
   } catch (err) {
