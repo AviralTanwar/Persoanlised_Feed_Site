@@ -79,23 +79,18 @@ export default function NewsPanel({ kpi }) {
   function dismissItem(id, mode = 'out') {
     setOpen(o => o === id ? null : o)
     setExiting(e => ({ ...e, [id]: mode }))
-    // exit-left/right: 220ms slide + 360ms collapse = 580ms total → wait 620ms
-    // out: all transitions 440ms
+    // exit-left/right: 220ms slide + 360ms collapse → wait 620ms; out: 440ms
     const wait = mode === 'out' ? 440 : 620
     setTimeout(() => {
       const next = reserveRef.current.pop() || null
-      let depleted = false
-      setVisible(v => {
-        const filtered = v.filter(a => String(a.id) !== id)
-        const result = next ? [...filtered, next] : filtered
-        depleted = result.length === 0
-        return result
-      })
+      // Compute next visible list outside setVisible so `depleted` is readable
+      // synchronously — the updater-function side-effect pattern is unreliable
+      // under React 18 automatic batching (the variable reads stale when checked).
+      const remaining  = visible.filter(a => String(a.id) !== id)
+      const nextVisible = next ? [...remaining, next] : remaining
+      setVisible(nextVisible)
       setExiting(e => { const n = { ...e }; delete n[id]; return n })
-      // This tier's batch just ran out — re-fetch, which re-evaluates the
-      // fresh -> unseen-old -> glanced-old -> exhausted cascade from scratch
-      // now that the dismissed article's response/clicked_on_more changed.
-      if (depleted) load()
+      if (nextVisible.length === 0) load()
     }, wait)
   }
 
@@ -331,18 +326,10 @@ export default function NewsPanel({ kpi }) {
           )}
 
           {!loading && !error && visible.length === 0 && (
-            tier === 'exhausted' ? (
-              <div className="news-exhausted">
-                <p className="empty-msg">You've seen everything there is to see 🎉</p>
-                <button className="btn-g" onClick={openReview}>↺ Review old news</button>
-              </div>
-            ) : (
-              <p className="empty-msg">No articles found.</p>
-            )
-          )}
-
-          {!loading && !error && visible.length > 0 && (tier === 'unseen-old' || tier === 'glanced-old') && (
-            <p className="news-tier-banner">↻ Previously shown — no brand-new stories right now</p>
+            <div className="news-exhausted">
+              <p className="empty-msg">You're all caught up — no new stories right now.</p>
+              <button className="btn-g" onClick={openReview}>↺ Review old news</button>
+            </div>
           )}
 
           <div className="news-list">

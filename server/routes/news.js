@@ -67,10 +67,12 @@ const noFreshUntil = new Map();
 
 router.get('/:kpiId/old', (req, res) => {
   const kpiId = Number(req.params.kpiId);
-  const count = Math.min(Number(req.query.count) || 20, 50);
+  const count = Math.min(Number(req.query.count) || 30, 100);
+  // Return everything ever seen for this KPI — both reacted and unreacted —
+  // except articles that are currently live on screen (already in the main panel).
   const rows = db.prepare(`
     SELECT * FROM tbl_news_data
-    WHERE news_api_id = ? AND deleted_at IS NULL AND response != 0
+    WHERE news_api_id = ? AND deleted_at IS NULL AND NOT (response = 0 AND live = 1)
     ORDER BY updated_at DESC LIMIT ?
   `).all(kpiId, count);
   res.json(rows.map(dbRowToArticle));
@@ -116,22 +118,9 @@ router.get('/:kpiId', async (req, res) => {
       noFreshUntil.set(kpiId, Date.now() + NO_FRESH_TTL_MS);
     }
 
-    // Tier 1: seen before, no reaction, never expanded
-    const unseenOld = db.prepare(`
-      SELECT * FROM tbl_news_data
-      WHERE news_api_id = ? AND deleted_at IS NULL AND response = 0 AND clicked_on_more = 0
-      ORDER BY news_date DESC LIMIT ?
-    `).all(kpiId, count);
-    if (unseenOld.length > 0) return res.json({ tier: 'unseen-old', articles: unseenOld.map(dbRowToArticle) });
-
-    // Tier 2: seen before, expanded, no reaction
-    const glancedOld = db.prepare(`
-      SELECT * FROM tbl_news_data
-      WHERE news_api_id = ? AND deleted_at IS NULL AND response = 0 AND clicked_on_more = 1
-      ORDER BY news_date DESC LIMIT ?
-    `).all(kpiId, count);
-    if (glancedOld.length > 0) return res.json({ tier: 'glanced-old', articles: glancedOld.map(dbRowToArticle) });
-
+    // No fresh news — tell the client to show the "seen everything" state.
+    // Old/previously-seen articles are served separately via /:kpiId/old
+    // only when the user explicitly clicks "Review old news".
     res.json({ tier: 'exhausted', articles: [] });
   } catch (err) {
     res.status(502).json({ error: err.message || 'Failed to fetch news' });
