@@ -139,6 +139,18 @@ db.exec(`
     deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
   );
 
+  -- Controls which views/sections are visible and in what order.
+  -- rank is UNIQUE so no two views can share the same display position.
+  CREATE TABLE IF NOT EXISTS tbl_view_kpi (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name        TEXT     NOT NULL,
+    description TEXT     DEFAULT '',
+    rank        INTEGER  NOT NULL UNIQUE,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
+
   CREATE TABLE IF NOT EXISTS web_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     page_id TEXT NOT NULL,

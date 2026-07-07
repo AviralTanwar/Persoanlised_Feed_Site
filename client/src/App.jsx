@@ -194,6 +194,11 @@ export default function App() {
           <News techRef={setRef('tech')} />
         </section>
 
+        {/* To-Do */}
+        <section id="todo" className="sec reveal" ref={setRef('todo')}>
+          <ToDo />
+        </section>
+
         {/* OneNote */}
         <section id="notes" className="sec reveal" ref={setRef('notes')}>
           <OneNote />
@@ -207,11 +212,6 @@ export default function App() {
         {/* Web Pages */}
         <section id="webpages" className="sec reveal" ref={setRef('webpages')}>
           <WebPages />
-        </section>
-
-        {/* To-Do */}
-        <section id="todo" className="sec reveal" ref={setRef('todo')}>
-          <ToDo />
         </section>
 
         {/* Improvements */}
