@@ -11,22 +11,27 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { summary_id, title, description='', status='pending', priority='medium', due_date=null, position=0 } = req.body;
+  const { summary_id, title, description='', status='pending', priority='medium', due_date=null, position=0, remark='' } = req.body;
   if (!summary_id || !title) return res.status(400).json({ error: 'summary_id and title required' });
   const info = db.prepare(
-    'INSERT INTO tbl_to_do (summary_id,title,description,status,priority,due_date,position) VALUES (?,?,?,?,?,?,?)'
-  ).run(summary_id, title, description, status, priority, due_date, position);
+    'INSERT INTO tbl_to_do (summary_id,title,description,status,priority,due_date,position,remark) VALUES (?,?,?,?,?,?,?,?)'
+  ).run(summary_id, title, description, status, priority, due_date, position, remark);
   res.json(db.prepare('SELECT * FROM tbl_to_do WHERE id=?').get(info.lastInsertRowid));
 });
 
 router.patch('/:id', (req, res) => {
-  const { title, description, status, priority, due_date, position } = req.body;
+  const { title, description, status, priority, due_date, position, remark } = req.body;
   db.prepare(`UPDATE tbl_to_do SET
-    title=COALESCE(?,title), description=COALESCE(?,description),
-    status=COALESCE(?,status), priority=COALESCE(?,priority),
-    due_date=COALESCE(?,due_date), position=COALESCE(?,position),
-    updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-    .run(title, description, status, priority, due_date, position, Number(req.params.id));
+    title       = COALESCE(?, title),
+    description = COALESCE(?, description),
+    status      = COALESCE(?, status),
+    priority    = COALESCE(?, priority),
+    due_date    = COALESCE(?, due_date),
+    position    = COALESCE(?, position),
+    remark      = COALESCE(?, remark),
+    updated_at  = CURRENT_TIMESTAMP
+    WHERE id=?`)
+    .run(title??null, description??null, status??null, priority??null, due_date??null, position??null, remark??null, Number(req.params.id));
   res.json(db.prepare('SELECT * FROM tbl_to_do WHERE id=?').get(Number(req.params.id)));
 });
 

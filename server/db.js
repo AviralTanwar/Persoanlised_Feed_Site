@@ -188,8 +188,13 @@ if (!newsCols.includes('shown')) {
   db.exec(`ALTER TABLE tbl_news_data ADD COLUMN shown INTEGER NOT NULL DEFAULT 0 CHECK(shown IN (0, 1, 2, 3, 4, 5))`);
 }
 if (!newsCols.includes('news_api_id')) {
-  // Which tbl_news_kpi_data row this article came from
   db.exec(`ALTER TABLE tbl_news_data ADD COLUMN news_api_id INTEGER`);
+}
+
+// Migration: add remark column to tbl_to_do if upgrading from earlier schema
+const todoCols = db.prepare('PRAGMA table_info(tbl_to_do)').all().map(c => c.name);
+if (!todoCols.includes('remark')) {
+  db.exec(`ALTER TABLE tbl_to_do ADD COLUMN remark TEXT DEFAULT ''`);
 }
 
 // Seed news KPIs on first run — National + Tech, both via Google News RSS (no key, no quota)
