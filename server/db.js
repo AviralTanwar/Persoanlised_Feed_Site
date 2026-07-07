@@ -244,6 +244,13 @@ if (n === 0) {
   for (const row of seeds) insert.run(...row);
 }
 
+// Seed user profile on first run
+const { n: userCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_user_info').get();
+if (userCount === 0) {
+  db.prepare('INSERT INTO tbl_user_info (firstname, lastname, username) VALUES (?, ?, ?)')
+    .run('Aviral', 'Tanwar', 'Aviral_Tanwar');
+}
+
 // Seed to-do unlock password (bcrypt-hashed, seeded once)
 const { n: credCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_credentials').get();
 if (credCount === 0) {

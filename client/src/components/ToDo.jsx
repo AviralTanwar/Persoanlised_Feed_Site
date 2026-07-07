@@ -8,18 +8,21 @@ const COLUMNS = [
   { key: 'in_progress', label: 'In Progress', emoji: '🔶', color: 'var(--peach)' },
   { key: 'done',        label: 'Done',        emoji: '✅', color: 'var(--green)' },
 ]
-const PRIORITY_COLOR = { low: 'var(--blue)', medium: 'var(--peach)', high: 'var(--red)' }
-const STATUS_NEXT    = { pending: 'in_progress', in_progress: 'done', done: 'pending' }
+const PRIORITY = {
+  high:   { color: '#ef4444', bg: 'rgba(239,68,68,0.13)',   border: '#ef4444', label: '🔴 High'   },
+  medium: { color: '#f97316', bg: 'rgba(249,115,22,0.13)',  border: '#f97316', label: '🟠 Medium' },
+  low:    { color: '#3b82f6', bg: 'rgba(59,130,246,0.13)',  border: '#3b82f6', label: '🔵 Low'    },
+}
+const STATUS_NEXT = { pending: 'in_progress', in_progress: 'done', done: 'pending' }
 
-const GREETINGS = [
-  { emoji: '🚀', text: 'Pick a board to launch into your tasks.' },
-  { emoji: '🎯', text: 'Select a board from the left to focus.' },
-  { emoji: '✨', text: 'Your next win is one board away.' },
-  { emoji: '💡', text: 'Ideas become tasks. Tasks become done.' },
-]
+const LS = {
+  sortBy:   () => localStorage.getItem('todo_sort_by')  || 'created_at',
+  sortDir:  () => localStorage.getItem('todo_sort_dir') || 'desc',
+  sidebarW: () => parseInt(localStorage.getItem('todo_sidebar_w') || '230', 10),
+}
 
 function fmtDate(dt) {
-  if (!dt) return null
+  if (!dt) return '—'
   return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -31,28 +34,55 @@ export default function ToDo() {
   const [pwError, setPwError]       = useState(null)
   const [pwLoading, setPwLoading]   = useState(false)
   const [shake, setShake]           = useState(false)
+  const [user, setUser]             = useState(null)
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+  const [sidebarOpen, setSidebarOpen]   = useState(true)
+  const [sidebarWidth, setSidebarWidth] = useState(LS.sidebarW)
 
   // ── Boards ────────────────────────────────────────────────────────────────
-  const [boards, setBoards]             = useState([])
-  const [activeBoard, setActiveBoard]   = useState(null)
-  const [sortBy, setSortBy]             = useState('created_at')
-  const [sortDir, setSortDir]           = useState('desc')
-  const [sidebarOpen, setSidebarOpen]   = useState(true)
-  const [addingBoard, setAddingBoard]   = useState(false)
-  const [newBoard, setNewBoard]         = useState({ name: '', description: '' })
+  const [boards, setBoards]           = useState([])
+  const [activeBoard, setActiveBoard] = useState(null)
+  // sortBy/sortDir persisted in localStorage (#5)
+  const [sortBy, setSortByRaw]   = useState(LS.sortBy)
+  const [sortDir, setSortDirRaw] = useState(LS.sortDir)
+  const [addingBoard, setAddingBoard] = useState(false)
+  const [newBoard, setNewBoard]       = useState({ name: '', description: '' })
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
-  const [tasks, setTasks]           = useState([])
+  const [tasks, setTasks]             = useState([])
   const [editingTask, setEditingTask] = useState(null)
-  const [editDraft, setEditDraft]   = useState({})
-  const [addingIn, setAddingIn]     = useState(null)
-  const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [hoveredTask, setHoveredTask]   = useState(null)
-  const [remarkDraft, setRemarkDraft]   = useState({})
-  const [dragOverCol, setDragOverCol]   = useState(null)
+  const [editDraft, setEditDraft]     = useState({})
+  const [addingIn, setAddingIn]       = useState(null)
+  const [newTask, setNewTask]         = useState({ title: '', description: '' })
+  const [hoveredTask, setHoveredTask] = useState(null)
+  const [draggingTask, setDraggingTask] = useState(null)
+  const [remarkDraft, setRemarkDraft] = useState({})
+  const [dragOverCol, setDragOverCol] = useState(null)
 
-  const addInputRef   = useRef(null)
-  const greeting      = useRef(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]).current
+  const addInputRef = useRef(null)
+
+  // ── Helpers: persist filter ───────────────────────────────────────────────
+  function setSortBy(v)  { setSortByRaw(v);  localStorage.setItem('todo_sort_by', v) }
+  function setSortDir(v) { setSortDirRaw(v); localStorage.setItem('todo_sort_dir', v) }
+
+  // ── Sidebar resize (drag handle, limited 160–360 px) ─────────────────────
+  function onResizeStart(e) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sidebarWidth
+    function onMove(ev) {
+      const w = Math.min(360, Math.max(160, startW + ev.clientX - startX))
+      setSidebarWidth(w)
+      localStorage.setItem('todo_sidebar_w', String(w))
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup',   onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
+  }
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   async function unlock(e) {
@@ -64,11 +94,13 @@ export default function ToDo() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pwInput }),
       }).then(r => r.json())
-      if (ok) { setIsUnlocked(true); loadBoards() }
-      else {
+      if (ok) {
+        setIsUnlocked(true)
+        loadBoards()
+        fetch('/api/user-info').then(r => r.ok ? r.json() : null).then(u => u && setUser(u)).catch(() => {})
+      } else {
         setPwError('Wrong password.')
-        setShake(true); setTimeout(() => setShake(false), 500)
-        setPwInput('')
+        setShake(true); setTimeout(() => setShake(false), 500); setPwInput('')
       }
     } catch { setPwError('Could not reach server.') }
     finally { setPwLoading(false) }
@@ -93,7 +125,7 @@ export default function ToDo() {
   }
 
   async function deleteBoard(id) {
-    if (!window.confirm('Delete this board and all its tasks?')) return
+    if (!window.confirm('Soft-delete this board?')) return
     await fetch(`/api/todo-summaries/${id}`, { method: 'DELETE' })
     if (activeBoard?.id === id) setActiveBoard(null)
     loadBoards()
@@ -114,12 +146,13 @@ export default function ToDo() {
   function selectBoard(b) { setActiveBoard(b); loadTasks(b.id); setHoveredTask(null) }
 
   async function addTask(status) {
-    if (!newTaskTitle.trim()) { setAddingIn(null); return }
+    if (!newTask.title.trim()) { setAddingIn(null); return }
     const t = await fetch('/api/todos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ summary_id: activeBoard.id, title: newTaskTitle.trim(), status }),
+      body: JSON.stringify({ summary_id: activeBoard.id, title: newTask.title.trim(), description: newTask.description.trim(), status }),
     }).then(r => r.json())
-    setTasks(ts => [...ts, t]); setNewTaskTitle(''); setAddingIn(null); loadBoards()
+    setTasks(ts => [...ts, t])
+    setNewTask({ title: '', description: '' }); setAddingIn(null); loadBoards()
   }
 
   async function patchTask(id, fields) {
@@ -137,7 +170,7 @@ export default function ToDo() {
     setEditingTask(null); loadBoards()
   }
 
-  // ── Remark auto-save on mouse leave ───────────────────────────────────────
+  // ── Remark auto-save ──────────────────────────────────────────────────────
   function handleCardLeave(task) {
     setHoveredTask(null)
     const draft = remarkDraft[task.id]
@@ -152,23 +185,21 @@ export default function ToDo() {
     e.dataTransfer.setData('taskId', String(task.id))
     e.dataTransfer.effectAllowed = 'move'
     setHoveredTask(null)
+    // setTimeout: browser captures ghost FIRST at full opacity, THEN source card dims
+    setTimeout(() => setDraggingTask(task.id), 0)
   }
 
-  function onDragOver(e, colKey) {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverCol(colKey)
-  }
+  function onDragEnd() { setDraggingTask(null) }
+
+  function onDragEnter(e, colKey) { e.preventDefault(); setDragOverCol(colKey) }
+  function onDragOver(e)          { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }
+  function onDragLeave(e)         { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverCol(null) }
 
   async function onDrop(e, newStatus) {
-    e.preventDefault()
-    setDragOverCol(null)
+    e.preventDefault(); setDragOverCol(null)
     const taskId = Number(e.dataTransfer.getData('taskId'))
     const task   = tasks.find(t => t.id === taskId)
-    if (task && task.status !== newStatus) {
-      await patchTask(taskId, { status: newStatus })
-      loadBoards()
-    }
+    if (task && task.status !== newStatus) { await patchTask(taskId, { status: newStatus }); loadBoards() }
   }
 
   // ── Edit modal ────────────────────────────────────────────────────────────
@@ -176,11 +207,7 @@ export default function ToDo() {
     setEditingTask(task)
     setEditDraft({ title: task.title, description: task.description||'', status: task.status, priority: task.priority, due_date: task.due_date||'' })
   }
-
-  async function saveEdit() {
-    await patchTask(editingTask.id, editDraft)
-    setEditingTask(null); loadBoards()
-  }
+  async function saveEdit() { await patchTask(editingTask.id, editDraft); setEditingTask(null); loadBoards() }
 
   useEffect(() => { if (addingIn && addInputRef.current) addInputRef.current.focus() }, [addingIn])
 
@@ -189,30 +216,24 @@ export default function ToDo() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Card className="todo-card">
-      <div className="todo-header">
+      <div className="todo-header-bar">
         <SectionHeader icon="✅" title="To-Do" />
         {isUnlocked && (
-          <button className="btn-g todo-sidebar-toggle" onClick={() => setSidebarOpen(o => !o)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>
+          <button className="todo-toggle-btn" onClick={() => setSidebarOpen(o => !o)}>
             {sidebarOpen ? '◀ Hide' : '▶ Boards'}
           </button>
         )}
       </div>
 
       {!isUnlocked ? (
-        /* ── Lock ── */
         <div className="todo-lock">
           <span className="todo-lock-icon">🔒</span>
-          <p className="todo-lock-hint">Enter your to-do password</p>
+          <p className="todo-lock-hint">Enter your to-do password to continue</p>
           <form className={`todo-lock-form${shake ? ' shake' : ''}`} onSubmit={unlock}>
             <div className="todo-pw-wrap">
-              <input
-                type={pwShow ? 'text' : 'password'}
-                className="todo-pw-input"
-                placeholder="Password"
-                value={pwInput}
-                onChange={e => setPwInput(e.target.value)}
-                autoFocus
-              />
+              <input type={pwShow ? 'text' : 'password'} className="todo-pw-input"
+                placeholder="Password" value={pwInput}
+                onChange={e => setPwInput(e.target.value)} autoFocus />
               <button type="button" className="todo-pw-eye" onClick={() => setPwShow(v => !v)} tabIndex={-1}>
                 {pwShow ? '🙈' : '👁️'}
               </button>
@@ -225,32 +246,31 @@ export default function ToDo() {
         </div>
 
       ) : (
-        /* ── Main layout ── */
         <div className="todo-layout">
 
-          {/* Sidebar */}
-          <aside className={`todo-sidebar${sidebarOpen ? '' : ' collapsed'}`}>
+          {/* ── Sidebar ── */}
+          <aside
+            className={`todo-sidebar${sidebarOpen ? '' : ' collapsed'}`}
+            style={sidebarOpen ? { width: sidebarWidth, minWidth: sidebarWidth } : {}}
+          >
             <div className="todo-sidebar-inner">
-              {/* Sort controls */}
               <div className="todo-sort-bar">
-                <select className="todo-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                <select className="todo-sort-select" value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}>
                   <option value="name">Name</option>
                   <option value="created_at">Created</option>
                   <option value="updated_at">Updated</option>
                 </select>
-                <button className="todo-sort-dir btn-g" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>
+                <button className="todo-sort-dir"
+                  onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}>
                   {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
                 </button>
               </div>
 
-              {/* Board list */}
               <div className="todo-board-list">
                 {sortedBoards.map(b => (
-                  <div
-                    key={b.id}
-                    className={`todo-sidebar-board${activeBoard?.id === b.id ? ' active' : ''}`}
-                    onClick={() => selectBoard(b)}
-                  >
+                  <div key={b.id} className={`todo-sidebar-board${activeBoard?.id === b.id ? ' active' : ''}`}
+                    onClick={() => selectBoard(b)}>
                     <div className="todo-sb-name">{b.name}</div>
                     {b.description && <div className="todo-sb-desc">{b.description}</div>}
                     <div className="todo-sb-counts">
@@ -261,30 +281,22 @@ export default function ToDo() {
                     <div className="todo-sb-dates">
                       {fmtDate(b.created_at)} · {fmtDate(b.updated_at)}
                     </div>
-                    <button className="todo-sb-del" onClick={e => { e.stopPropagation(); deleteBoard(b.id) }} title="Delete">✕</button>
+                    <button className="todo-sb-del" title="Delete"
+                      onClick={e => { e.stopPropagation(); deleteBoard(b.id) }}>✕</button>
                   </div>
                 ))}
 
                 {addingBoard ? (
                   <form className="todo-sidebar-board todo-add-board-form" onSubmit={createBoard}>
-                    <input
-                      autoFocus
-                      className="todo-inline-input"
-                      placeholder="Board name *"
-                      value={newBoard.name}
-                      onChange={e => setNewBoard(f => ({ ...f, name: e.target.value }))}
-                      onKeyDown={e => e.key === 'Escape' && setAddingBoard(false)}
-                    />
-                    <input
-                      className="todo-inline-input"
-                      placeholder="Description (optional)"
-                      value={newBoard.description}
-                      onChange={e => setNewBoard(f => ({ ...f, description: e.target.value }))}
-                      style={{ marginTop: 5 }}
-                    />
-                    <div className="todo-btn-row" style={{ marginTop: 6 }}>
-                      <button className="btn-g on" type="submit" style={{ fontSize: 11 }}>Create</button>
-                      <button className="btn-g" type="button" style={{ fontSize: 11 }} onClick={() => { setAddingBoard(false); setNewBoard({ name: '', description: '' }) }}>Cancel</button>
+                    <input autoFocus className="todo-inline-input" placeholder="Board name *"
+                      value={newBoard.name} onChange={e => setNewBoard(f => ({ ...f, name: e.target.value }))}
+                      onKeyDown={e => e.key === 'Escape' && setAddingBoard(false)} />
+                    <textarea className="todo-inline-textarea" placeholder="Description (optional)" rows={2}
+                      value={newBoard.description} onChange={e => setNewBoard(f => ({ ...f, description: e.target.value }))} />
+                    <div className="todo-btn-row">
+                      <button className="todo-btn-primary" type="submit">Create</button>
+                      <button className="todo-btn-secondary" type="button"
+                        onClick={() => { setAddingBoard(false); setNewBoard({ name: '', description: '' }) }}>Cancel</button>
                     </div>
                   </form>
                 ) : (
@@ -294,79 +306,96 @@ export default function ToDo() {
             </div>
           </aside>
 
-          {/* Main content */}
+          {/* Resize handle — drag to resize sidebar */}
+          {sidebarOpen && (
+            <div className="todo-resize-handle" onMouseDown={onResizeStart} />
+          )}
+
+          {/* ── Main ── */}
           <div className="todo-main">
             {!activeBoard ? (
-              /* ── No board selected: creative greeting ── */
               <div className="todo-greeting">
-                <span className="todo-greeting-emoji">{greeting.emoji}</span>
-                <p className="todo-greeting-text">{greeting.text}</p>
-                <p className="todo-greeting-sub">Create a board on the left to get started.</p>
+                <div className="todo-greeting-content">
+                  <span className="todo-greeting-wave">👋</span>
+                  <h2 className="todo-greeting-name">
+                    Hey, {user ? `${user.firstname} ${user.lastname}` : 'there'}!
+                  </h2>
+                  {user?.title && <p className="todo-greeting-title">{user.title}</p>}
+                  <p className="todo-greeting-sub">Select a board on the left to view its Kanban, or create a new one.</p>
+                </div>
               </div>
             ) : (
-              /* ── Kanban ── */
-              <div className="todo-kanban-inner">
-                <div className="todo-kanban-title">{activeBoard.name}</div>
+              <div className="todo-kanban-wrap">
+                <div className="todo-kanban-topbar">
+                  <span className="todo-kanban-title">{activeBoard.name}</span>
+                  <button className="todo-close-btn" onClick={() => setActiveBoard(null)}>✕ Close</button>
+                </div>
+
                 <div className="todo-kanban">
                   {COLUMNS.map(col => (
-                    <div
-                      key={col.key}
+                    <div key={col.key}
                       className={`todo-col${dragOverCol === col.key ? ' drag-over' : ''}`}
-                      onDragOver={e => onDragOver(e, col.key)}
-                      onDragLeave={() => setDragOverCol(null)}
+                      onDragEnter={e => onDragEnter(e, col.key)}
+                      onDragOver={onDragOver}
+                      onDragLeave={onDragLeave}
                       onDrop={e => onDrop(e, col.key)}
                     >
-                      {/* Column header */}
                       <div className="todo-col-header" style={{ borderBottomColor: col.color }}>
                         <span style={{ color: col.color }}>{col.emoji} {col.label}</span>
                         <span className="todo-col-count">{colTasks(col.key).length}</span>
                       </div>
 
-                      {/* Cards */}
                       <div className="todo-col-cards">
                         {colTasks(col.key).map(task => {
-                          const isHovered = hoveredTask === task.id
+                          const p        = PRIORITY[task.priority] || PRIORITY.medium
+                          const isHov    = hoveredTask === task.id
+                          const isDragging = draggingTask === task.id
                           return (
-                            <div
-                              key={task.id}
-                              className={`todo-task-card${isHovered ? ' hovered' : ''}`}
+                            <div key={task.id}
+                              className={`todo-task-card${isHov ? ' hovered' : ''}${isDragging ? ' dragging' : ''}`}
+                              style={{ borderTop: `4px solid ${p.border}`, background: p.bg }}
                               draggable
                               onDragStart={e => onDragStart(e, task)}
+                              onDragEnd={onDragEnd}
                               onMouseEnter={() => setHoveredTask(task.id)}
                               onMouseLeave={() => handleCardLeave(task)}
                             >
-                              {/* Compact view always visible */}
+                              {/* Always-visible compact row */}
                               <div className="todo-task-top">
-                                <span className="todo-task-status-emoji">{col.emoji}</span>
                                 <span className="todo-task-title">{task.title}</span>
+                                <span className="todo-priority-badge" style={{ color: p.color, borderColor: p.border }}>
+                                  {p.label}
+                                </span>
                               </div>
 
                               {/* Expanded on hover */}
-                              {isHovered && (
+                              {isHov && (
                                 <div className="todo-task-expand" onMouseDown={e => e.stopPropagation()}>
                                   {task.description && <p className="todo-task-desc">{task.description}</p>}
                                   <div className="todo-task-meta">
-                                    <span className="todo-priority-tag" style={{ color: PRIORITY_COLOR[task.priority] }}>{task.priority}</span>
+                                    <span>{col.emoji} {col.label}</span>
                                     {task.due_date && <span className="todo-due">📅 {fmtDate(task.due_date)}</span>}
                                   </div>
                                   <div className="todo-task-dates">
-                                    Created {fmtDate(task.created_at)}
-                                    {task.updated_at !== task.created_at && <> · Updated {fmtDate(task.updated_at)}</>}
+                                    Created {fmtDate(task.created_at)} · Modified {fmtDate(task.updated_at)}
                                   </div>
-                                  <div className="todo-remark-section">
-                                    <label className="todo-remark-label">📝 Remark</label>
-                                    <textarea
-                                      className="todo-remark-input"
-                                      placeholder="Add a remark…"
-                                      rows={2}
-                                      value={remarkDraft[task.id] ?? task.remark ?? ''}
-                                      onChange={e => setRemarkDraft(d => ({ ...d, [task.id]: e.target.value }))}
-                                      onClick={e => e.stopPropagation()}
-                                    />
-                                  </div>
+                                  {(task.remark || remarkDraft[task.id] !== undefined) && (
+                                    <div className="todo-remark-section">
+                                      <label className="todo-remark-label">📝 Remark</label>
+                                      <textarea className="todo-remark-input" placeholder="Add a remark…" rows={2}
+                                        value={remarkDraft[task.id] ?? task.remark ?? ''}
+                                        onChange={e => setRemarkDraft(d => ({ ...d, [task.id]: e.target.value }))}
+                                        onClick={e => e.stopPropagation()} />
+                                    </div>
+                                  )}
                                   <div className="todo-task-actions">
-                                    <button className="btn-g" style={{ fontSize: 11 }} onClick={e => { e.stopPropagation(); openEdit(task) }}>✏️ Edit</button>
-                                    <button className="btn-g" style={{ fontSize: 11, color: 'var(--peach)' }}
+                                    <button className="todo-btn-secondary" style={{ fontSize: 11 }}
+                                      onClick={e => { e.stopPropagation(); setRemarkDraft(d => ({ ...d, [task.id]: task.remark || '' })) }}>
+                                      📝 Remark
+                                    </button>
+                                    <button className="todo-btn-secondary" style={{ fontSize: 11 }}
+                                      onClick={e => { e.stopPropagation(); openEdit(task) }}>✏️ Edit</button>
+                                    <button className="todo-btn-secondary" style={{ fontSize: 11 }}
                                       onClick={e => { e.stopPropagation(); patchTask(task.id, { status: STATUS_NEXT[task.status] }).then(() => loadBoards()) }}>
                                       → {COLUMNS.find(c => c.key === STATUS_NEXT[task.status])?.label}
                                     </button>
@@ -378,24 +407,24 @@ export default function ToDo() {
                         })}
                       </div>
 
-                      {/* Add task */}
                       {addingIn === col.key ? (
                         <div className="todo-add-form">
-                          <input
-                            ref={addInputRef}
-                            className="todo-inline-input"
-                            placeholder="Task title…"
-                            value={newTaskTitle}
-                            onChange={e => setNewTaskTitle(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') addTask(col.key); if (e.key === 'Escape') { setAddingIn(null); setNewTaskTitle('') } }}
-                          />
+                          <input ref={addInputRef} className="todo-inline-input" placeholder="Task title *"
+                            value={newTask.title} onChange={e => setNewTask(t => ({ ...t, title: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Escape') { setAddingIn(null); setNewTask({ title: '', description: '' }) } }} />
+                          <textarea className="todo-inline-textarea" placeholder="Description (optional)" rows={2}
+                            value={newTask.description} onChange={e => setNewTask(t => ({ ...t, description: e.target.value }))} />
                           <div className="todo-btn-row">
-                            <button className="btn-g on" style={{ fontSize: 11 }} onClick={() => addTask(col.key)}>Add</button>
-                            <button className="btn-g" style={{ fontSize: 11 }} onClick={() => { setAddingIn(null); setNewTaskTitle('') }}>✕</button>
+                            <button className="todo-btn-primary" style={{ fontSize: 11 }} onClick={() => addTask(col.key)}>Add</button>
+                            <button className="todo-btn-secondary" style={{ fontSize: 11 }}
+                              onClick={() => { setAddingIn(null); setNewTask({ title: '', description: '' }) }}>✕</button>
                           </div>
                         </div>
                       ) : (
-                        <button className="todo-add-task-btn" onClick={() => { setAddingIn(col.key); setNewTaskTitle('') }}>+ Add task</button>
+                        <button className="todo-add-task-btn"
+                          onClick={() => { setAddingIn(col.key); setNewTask({ title: '', description: '' }) }}>
+                          + Add task
+                        </button>
                       )}
                     </div>
                   ))}
@@ -412,42 +441,47 @@ export default function ToDo() {
           <div className="todo-modal" onClick={e => e.stopPropagation()}>
             <div className="todo-modal-header">
               <span>Edit Task</span>
-              <button className="btn-i" onClick={() => setEditingTask(null)}>✕</button>
+              <button className="todo-modal-close" onClick={() => setEditingTask(null)}>✕</button>
             </div>
             <div className="todo-modal-body">
               <div className="todo-field"><label>Title</label>
-                <input className="todo-inline-input" value={editDraft.title} onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))} />
+                <input className="todo-inline-input" value={editDraft.title}
+                  onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))} />
               </div>
               <div className="todo-field"><label>Description</label>
-                <textarea className="todo-textarea" rows={3} value={editDraft.description} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))} />
+                <textarea className="todo-inline-textarea" rows={4} value={editDraft.description}
+                  onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))} />
               </div>
               <div className="todo-field-row">
                 <div className="todo-field"><label>Status</label>
-                  <select className="todo-select" value={editDraft.status} onChange={e => setEditDraft(d => ({ ...d, status: e.target.value }))}>
+                  <select className="todo-select" value={editDraft.status}
+                    onChange={e => setEditDraft(d => ({ ...d, status: e.target.value }))}>
                     {COLUMNS.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
                   </select>
                 </div>
                 <div className="todo-field"><label>Priority</label>
-                  <select className="todo-select" value={editDraft.priority} onChange={e => setEditDraft(d => ({ ...d, priority: e.target.value }))}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                  <select className="todo-select" value={editDraft.priority}
+                    onChange={e => setEditDraft(d => ({ ...d, priority: e.target.value }))}>
+                    <option value="high">🔴 High</option>
+                    <option value="medium">🟠 Medium</option>
+                    <option value="low">🔵 Low</option>
                   </select>
                 </div>
               </div>
               <div className="todo-field"><label>Due Date</label>
-                <input type="date" className="todo-inline-input" value={editDraft.due_date} onChange={e => setEditDraft(d => ({ ...d, due_date: e.target.value }))} />
+                <input type="date" className="todo-inline-input" value={editDraft.due_date}
+                  onChange={e => setEditDraft(d => ({ ...d, due_date: e.target.value }))} />
               </div>
               <div className="todo-timestamps">
                 <span>Created: {fmtDate(editingTask.created_at)}</span>
-                <span>Updated: {fmtDate(editingTask.updated_at)}</span>
+                <span>Last modified: {fmtDate(editingTask.updated_at)}</span>
               </div>
             </div>
             <div className="todo-modal-footer">
-              <button className="btn-g" style={{ color: 'var(--red)', fontSize: 12 }} onClick={() => deleteTask(editingTask.id)}>🗑 Delete</button>
+              <button className="todo-btn-danger" onClick={() => deleteTask(editingTask.id)}>🗑 Delete</button>
               <div className="todo-btn-row">
-                <button className="btn-g" style={{ fontSize: 12 }} onClick={() => setEditingTask(null)}>Cancel</button>
-                <button className="btn-g on" style={{ fontSize: 12 }} onClick={saveEdit}>Save</button>
+                <button className="todo-btn-secondary" onClick={() => setEditingTask(null)}>Cancel</button>
+                <button className="todo-btn-primary" onClick={saveEdit}>Save</button>
               </div>
             </div>
           </div>

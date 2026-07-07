@@ -1,143 +1,228 @@
-/* Disable Card's 3D tilt — same fix as News, for the same reason */
-.todo-card,
-.todo-card:hover { transform: none !important; box-shadow: var(--card-inset), var(--shadow-card); }
+/* Disable Card 3D tilt (overflow:hidden + perspective breaks pointer events) */
+.todo-card, .todo-card:hover { transform: none !important; box-shadow: var(--card-inset), var(--shadow-card); }
 
-/* ── Header row (title + sidebar toggle) ── */
-.todo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .2rem; }
-.todo-header .sh { margin-bottom: 0; border-bottom: none; padding-bottom: 0; flex: 1; }
-.todo-sidebar-toggle { font-size: 11px; white-space: nowrap; }
+/* ── Shared buttons — explicit color so they work in dark + light ── */
+.todo-btn-primary {
+  padding: 6px 14px; background: var(--accent); color: var(--base);
+  border: none; border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: opacity .15s;
+}
+.todo-btn-primary:hover { opacity: .85; }
+
+.todo-btn-secondary {
+  padding: 6px 12px;
+  background: var(--s1);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text) 25%, transparent);
+  border-radius: 8px; font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer; transition: background .12s, border-color .12s;
+}
+.todo-btn-secondary:hover { background: var(--s2); border-color: var(--accent); }
+
+.todo-btn-danger {
+  padding: 6px 12px; background: color-mix(in srgb, var(--red) 15%, transparent);
+  color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border-radius: 8px; font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer; transition: background .12s;
+}
+.todo-btn-danger:hover { background: color-mix(in srgb, var(--red) 25%, transparent); }
+
+/* ── Header ── */
+.todo-header-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .4rem;
+}
+.todo-header-bar .sh { margin-bottom: 0; border-bottom: none; padding-bottom: 0; flex: 1; }
+
+/* Hide/show boards button — explicit colors, visible in both themes */
+.todo-toggle-btn {
+  padding: 6px 13px;
+  background: var(--s1);
+  color: var(--text);
+  border: 1.5px solid color-mix(in srgb, var(--text) 30%, transparent);
+  border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.todo-toggle-btn:hover { background: var(--s2); border-color: var(--accent); color: var(--accent); }
 
 /* ── Lock screen ── */
 .todo-lock { display: flex; flex-direction: column; align-items: center; gap: .9rem; padding: 2.4rem 1rem; }
 .todo-lock-icon { font-size: 2.2rem; }
-.todo-lock-hint { font-size: 13px; color: var(--s1); margin: 0; }
+.todo-lock-hint { font-size: 13px; color: var(--text2); margin: 0; font-weight: 500; }
 
-.todo-lock-form { display: flex; gap: 8px; width: 100%; max-width: 360px; align-items: center; }
+.todo-lock-form { display: flex; gap: 8px; width: 100%; max-width: 380px; align-items: center; }
 .todo-lock-form.shake { animation: todoShake .45s; }
 @keyframes todoShake {
   0%,100% { transform: translateX(0) } 20% { transform: translateX(-8px) }
   40% { transform: translateX(8px) } 60% { transform: translateX(-5px) } 80% { transform: translateX(5px) }
 }
+
 .todo-pw-wrap { flex: 1; position: relative; display: flex; }
 .todo-pw-input {
-  flex: 1; background: var(--s0); border: 1px solid var(--card-border);
-  border-radius: 10px; padding: 9px 36px 9px 12px; font-size: 14px;
+  flex: 1; background: var(--s0); border: 1.5px solid var(--card-border);
+  border-radius: 10px; padding: 9px 38px 9px 12px; font-size: 14px;
   color: var(--text); font-family: inherit; outline: none; transition: border-color .15s;
 }
 .todo-pw-input:focus { border-color: var(--accent); }
 .todo-pw-eye {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px; line-height: 1;
+  background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px; line-height: 1;
 }
 .todo-pw-btn {
-  padding: 9px 16px; background: var(--accent); color: var(--base);
+  padding: 9px 18px; background: var(--accent); color: var(--base);
   border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
   font-family: inherit; cursor: pointer; white-space: nowrap;
 }
-.todo-pw-btn:disabled { opacity: .6; cursor: not-allowed; }
-.todo-lock-error { font-size: 12px; color: var(--red); margin: 0; }
+.todo-pw-btn:disabled { opacity: .5; cursor: not-allowed; }
+.todo-lock-error { font-size: 12.5px; color: var(--red); font-weight: 600; margin: 0; }
 
 /* ── Two-panel layout ── */
 .todo-layout {
-  display: flex;
-  min-height: 520px;
-  max-height: 680px;
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  overflow: hidden;
-  margin-top: .6rem;
+  display: flex; min-height: 520px; max-height: 680px;
+  border: 1px solid var(--card-border); border-radius: 14px;
+  overflow: hidden; margin-top: .6rem;
 }
 
-/* ── Sidebar ── */
+/* Resize handle between sidebar and main */
+.todo-resize-handle {
+  width: 5px; flex-shrink: 0; cursor: col-resize;
+  background: var(--card-border);
+  transition: background .15s;
+  position: relative;
+}
+.todo-resize-handle::before {
+  content: ''; position: absolute;
+  inset: 0 -4px; /* wider invisible grab zone */
+}
+.todo-resize-handle:hover,
+.todo-resize-handle:active { background: var(--accent); }
+
+/* ── Sidebar (width driven by inline style for resize) ── */
 .todo-sidebar {
-  width: 230px;
-  min-width: 230px;
-  border-right: 1px solid var(--card-border);
-  background: color-mix(in srgb, var(--s0) 50%, transparent);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: width .25s ease, min-width .25s ease, opacity .2s;
   flex-shrink: 0;
+  border-right: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--s0) 60%, transparent);
+  display: flex; flex-direction: column; overflow: hidden;
+  transition: width .25s ease, min-width .25s ease, opacity .2s;
 }
-.todo-sidebar.collapsed { width: 0; min-width: 0; opacity: 0; pointer-events: none; }
+.todo-sidebar.collapsed { width: 0 !important; min-width: 0 !important; opacity: 0; pointer-events: none; }
 
-.todo-sidebar-inner { display: flex; flex-direction: column; height: 100%; width: 230px; }
+.todo-sidebar-inner { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
 .todo-sort-bar {
-  display: flex; gap: 6px; padding: .65rem .75rem .55rem;
-  border-bottom: 1px solid var(--card-border); flex-shrink: 0;
+  display: flex; gap: 6px; padding: .6rem .7rem .5rem;
+  border-bottom: 1px solid var(--card-border); flex-shrink: 0; align-items: center;
 }
 .todo-sort-select {
-  flex: 1; background: var(--s0); border: 1px solid var(--card-border);
+  flex: 1; background: var(--s0); border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
   border-radius: 7px; padding: 4px 7px; font-size: 11px; color: var(--text);
   font-family: inherit; outline: none; cursor: pointer;
 }
-.todo-sort-dir { font-size: 11px; white-space: nowrap; }
+.todo-sort-dir {
+  padding: 4px 9px; background: var(--s1); color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: background .12s;
+}
+.todo-sort-dir:hover { background: var(--s2); }
 
-.todo-board-list { flex: 1; overflow-y: auto; padding: .5rem; display: flex; flex-direction: column; gap: .4rem; }
+/* Sidebar board list — custom scrollbar visible in dark + light */
+.todo-board-list {
+  flex: 1; overflow-y: auto; padding: .5rem; display: flex;
+  flex-direction: column; gap: .4rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--s2) transparent;
+}
+.todo-board-list::-webkit-scrollbar { width: 5px; }
+.todo-board-list::-webkit-scrollbar-track { background: transparent; }
+.todo-board-list::-webkit-scrollbar-thumb { background: var(--s2); border-radius: 3px; }
+.todo-board-list::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 .todo-sidebar-board {
-  position: relative; background: color-mix(in srgb, var(--base) 60%, transparent);
+  position: relative; background: color-mix(in srgb, var(--base) 70%, transparent);
   border: 1px solid var(--card-border); border-radius: 10px;
-  padding: .65rem .7rem; cursor: pointer;
-  transition: border-color .15s, background .15s; flex-shrink: 0;
+  padding: .65rem .7rem .6rem; cursor: pointer; flex-shrink: 0;
+  transition: border-color .15s, background .15s;
 }
-.todo-sidebar-board:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--card-border)); background: color-mix(in srgb, var(--base) 85%, transparent); }
-.todo-sidebar-board.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--base)); }
+.todo-sidebar-board:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--card-border)); background: color-mix(in srgb, var(--base) 90%, transparent); }
+.todo-sidebar-board.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--base)); }
 
-.todo-sb-name  { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: .15rem; padding-right: 16px; }
-.todo-sb-desc  { font-size: 11px; color: var(--s1); margin-bottom: .3rem; line-height: 1.4; }
-.todo-sb-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: .25rem; }
-.todo-sb-dates  { font-size: 10px; color: var(--ov0); }
+.todo-sb-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: .2rem; padding-right: 18px; }
+.todo-sb-desc { font-size: 11.5px; color: var(--text2); margin-bottom: .3rem; line-height: 1.4; font-weight: 400; }
+.todo-sb-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: .2rem; }
+.todo-sb-dates  { font-size: 10px; color: var(--s2); font-style: italic; }
 
 .todo-sb-del {
   position: absolute; top: 6px; right: 6px; background: transparent; border: none;
-  color: var(--s1); font-size: 11px; cursor: pointer; padding: 2px 4px;
-  border-radius: 5px; line-height: 1; transition: color .1s, background .1s;
+  color: var(--s2); font-size: 12px; cursor: pointer; padding: 2px 4px;
+  border-radius: 5px; line-height: 1; font-weight: 700;
+  transition: color .1s, background .1s;
 }
-.todo-sb-del:hover { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+.todo-sb-del:hover { color: var(--red); background: color-mix(in srgb, var(--red) 15%, transparent); }
 
 .todo-add-board-form { cursor: default; }
 .todo-new-board-btn {
-  width: 100%; padding: 8px; font-size: 12px; font-weight: 600; color: var(--s1);
-  background: transparent; border: 1px dashed var(--s1); border-radius: 8px;
-  cursor: pointer; font-family: inherit; transition: color .12s, border-color .12s; flex-shrink: 0;
+  width: 100%; padding: 8px; font-size: 12px; font-weight: 700; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1.5px dashed var(--accent);
+  border-radius: 8px; cursor: pointer; font-family: inherit; flex-shrink: 0;
+  transition: background .12s;
 }
-.todo-new-board-btn:hover { color: var(--accent); border-color: var(--accent); }
+.todo-new-board-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 
-/* ── Main content ── */
+/* ── Right main panel ── */
 .todo-main { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-/* ── Greeting ── */
+/* ── Greeting — covers entire right panel ── */
 .todo-greeting {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 100%; gap: .9rem; padding: 2rem;
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  padding: 2rem; height: 100%;
 }
-.todo-greeting-emoji { font-size: 3rem; }
-.todo-greeting-text  { font-size: 18px; font-weight: 700; color: var(--text); text-align: center; font-family: 'Space Grotesk', sans-serif; margin: 0; }
-.todo-greeting-sub   { font-size: 13px; color: var(--s1); text-align: center; margin: 0; }
+.todo-greeting-content { text-align: center; max-width: 380px; }
+.todo-greeting-wave  { font-size: 3.2rem; display: block; margin-bottom: .7rem; }
+.todo-greeting-name  { font-size: 1.6rem; font-weight: 800; color: var(--text); font-family: 'Space Grotesk', sans-serif; margin: 0 0 .3rem; }
+.todo-greeting-title { font-size: 13px; color: var(--accent); font-weight: 600; margin: 0 0 .8rem; }
+.todo-greeting-sub   { font-size: 13.5px; color: var(--text2); line-height: 1.6; margin: 0; font-weight: 400; }
 
 /* ── Kanban ── */
-.todo-kanban-inner { display: flex; flex-direction: column; height: 100%; }
-.todo-kanban-title { font-size: 15px; font-weight: 800; color: var(--text); padding: .75rem 1rem .5rem; font-family: 'Space Grotesk', sans-serif; flex-shrink: 0; }
+.todo-kanban-wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.todo-kanban-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .7rem 1rem .5rem; flex-shrink: 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.todo-kanban-title { font-size: 15px; font-weight: 800; color: var(--text); font-family: 'Space Grotesk', sans-serif; }
+
+/* Close button — explicit colors for dark + light visibility */
+.todo-close-btn {
+  padding: 5px 12px;
+  background: var(--s1);
+  color: var(--text);
+  border: 1.5px solid color-mix(in srgb, var(--text) 25%, transparent);
+  border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.todo-close-btn:hover { background: color-mix(in srgb, var(--red) 15%, transparent); border-color: var(--red); color: var(--red); }
 
 .todo-kanban {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: .75rem; padding: 0 .75rem .75rem; flex: 1; overflow: hidden;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem;
+  padding: .7rem; flex: 1; overflow: hidden;
 }
 
 .todo-col {
   background: color-mix(in srgb, var(--s0) 50%, transparent);
   border: 1px solid var(--card-border); border-radius: 12px;
   padding: .65rem; display: flex; flex-direction: column; gap: .5rem;
-  overflow: hidden;
-  transition: border-color .15s, background .15s;
+  overflow: hidden; transition: border-color .15s, background .15s;
 }
 .todo-col.drag-over {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--s0));
+  background: color-mix(in srgb, var(--accent) 10%, var(--s0));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .todo-col-header {
@@ -146,31 +231,53 @@
   font-size: 12px; font-weight: 800; letter-spacing: .3px;
 }
 .todo-col-count {
-  font-size: 10.5px; font-weight: 700; color: var(--s1);
-  background: color-mix(in srgb, var(--s1) 18%, transparent);
+  font-size: 10.5px; font-weight: 700; color: var(--text);
+  background: color-mix(in srgb, var(--text) 15%, transparent);
   padding: 1px 7px; border-radius: 20px;
 }
 
-.todo-col-cards { display: flex; flex-direction: column; gap: .45rem; flex: 1; overflow-y: auto; min-height: 0; }
+/* Column cards list — custom scrollbar */
+.todo-col-cards {
+  display: flex; flex-direction: column; gap: .45rem;
+  flex: 1; overflow-y: auto; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: var(--s2) transparent;
+}
+.todo-col-cards::-webkit-scrollbar { width: 4px; }
+.todo-col-cards::-webkit-scrollbar-track { background: transparent; }
+.todo-col-cards::-webkit-scrollbar-thumb { background: var(--s2); border-radius: 2px; }
+.todo-col-cards::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-/* ── Task cards ── */
+/* ── Task cards — priority shown via bold top border + tinted bg (both set via inline style) ── */
 .todo-task-card {
-  background: color-mix(in srgb, var(--base) 65%, transparent);
-  border: 1px solid var(--card-border); border-radius: 9px;
-  padding: 9px 10px; cursor: grab;
-  transition: border-color .15s, background .15s, box-shadow .15s;
-  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--card-border);
+  border-top-width: 4px; /* overridden inline with priority color */
+  padding: 9px 10px; cursor: grab; flex-shrink: 0;
+  transition: box-shadow .15s, opacity .15s;
 }
 .todo-task-card:active { cursor: grabbing; }
 .todo-task-card.hovered {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--card-border));
-  background: color-mix(in srgb, var(--base) 90%, transparent);
-  box-shadow: 0 4px 16px -6px color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: 0 4px 18px -6px rgba(0,0,0,.25);
 }
+/* Dragging: source card becomes translucent so drop zone stands out */
+.todo-task-card.dragging { opacity: 0.2; }
 
-.todo-task-top { display: flex; align-items: flex-start; gap: 6px; }
-.todo-task-status-emoji { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
-.todo-task-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.todo-task-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+}
+.todo-task-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; flex: 1; }
+
+/* Always-visible priority badge */
+.todo-priority-badge {
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 800;
+  border: 1.5px solid;
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  background: transparent;
+  /* color and borderColor set via inline style */
+}
 
 .todo-task-expand {
   display: flex; flex-direction: column; gap: 6px;
@@ -180,39 +287,66 @@
 }
 @keyframes expandIn { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
 
-.todo-task-desc { font-size: 12px; color: var(--s1); line-height: 1.5; margin: 0; }
+/* Description — clearly readable in both themes */
+.todo-task-desc {
+  font-size: 12.5px; color: var(--text2); line-height: 1.6; margin: 0;
+  font-weight: 400;
+}
+
 .todo-task-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.todo-priority-tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
-.todo-due { font-size: 11px; color: var(--s1); }
-.todo-task-dates { font-size: 10px; color: var(--ov0); }
+
+.todo-priority-tag {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+  padding: 2px 8px; border-radius: 20px;
+}
+
+.todo-due { font-size: 11px; color: var(--text2); font-weight: 500; }
+
+.todo-task-dates { font-size: 10px; color: var(--s2); }
 
 .todo-remark-section { display: flex; flex-direction: column; gap: 3px; }
-.todo-remark-label   { font-size: 10.5px; font-weight: 600; color: var(--s1); }
+.todo-remark-label   { font-size: 10.5px; font-weight: 700; color: var(--text2); }
 .todo-remark-input {
-  width: 100%; background: var(--s0); border: 1px solid var(--card-border);
-  border-radius: 7px; padding: 5px 8px; font-size: 11.5px; color: var(--text);
+  width: 100%; background: var(--s0); border: 1.5px solid var(--card-border);
+  border-radius: 7px; padding: 6px 8px; font-size: 12px; color: var(--text);
   font-family: inherit; resize: none; outline: none; box-sizing: border-box;
   transition: border-color .15s;
 }
 .todo-remark-input:focus { border-color: var(--accent); }
+.todo-remark-input::placeholder { color: var(--s2); }
 
-.todo-task-actions { display: flex; gap: 6px; }
+.todo-task-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* ── Add task ── */
-.todo-add-form { flex-shrink: 0; }
+/* ── Add task form ── */
+.todo-add-form { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
 .todo-add-task-btn {
-  width: 100%; padding: 6px; font-size: 11.5px; font-weight: 600; color: var(--s1);
-  background: transparent; border: 1px dashed var(--s1); border-radius: 7px;
-  cursor: pointer; font-family: inherit; transition: color .12s, border-color .12s; flex-shrink: 0;
+  width: 100%; padding: 6px; font-size: 12px; font-weight: 700; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1.5px dashed var(--accent); border-radius: 7px;
+  cursor: pointer; font-family: inherit; flex-shrink: 0;
+  transition: background .12s;
 }
-.todo-add-task-btn:hover { color: var(--accent); border-color: var(--accent); }
+.todo-add-task-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+
+.todo-btn-row { display: flex; gap: 6px; }
+
+/* Shared inputs */
 .todo-inline-input {
-  width: 100%; background: var(--s0); border: 1px solid var(--card-border);
-  border-radius: 7px; padding: 6px 9px; font-size: 12.5px; color: var(--text);
+  width: 100%; background: var(--s0); border: 1.5px solid var(--card-border);
+  border-radius: 7px; padding: 7px 9px; font-size: 12.5px; color: var(--text);
   font-family: inherit; outline: none; box-sizing: border-box; transition: border-color .15s;
 }
 .todo-inline-input:focus { border-color: var(--accent); }
-.todo-btn-row { display: flex; gap: 6px; margin-top: 5px; }
+.todo-inline-input::placeholder { color: var(--s2); }
+
+.todo-inline-textarea {
+  width: 100%; background: var(--s0); border: 1.5px solid var(--card-border);
+  border-radius: 7px; padding: 7px 9px; font-size: 12.5px; color: var(--text);
+  font-family: inherit; resize: vertical; outline: none; box-sizing: border-box;
+  transition: border-color .15s; min-height: 56px;
+}
+.todo-inline-textarea:focus { border-color: var(--accent); }
+.todo-inline-textarea::placeholder { color: var(--s2); }
 
 /* ── Edit modal ── */
 .todo-modal-overlay {
@@ -222,7 +356,7 @@
   display: flex; align-items: center; justify-content: center; padding: 1rem;
 }
 .todo-modal {
-  width: 100%; max-width: 460px; background: var(--card-bg);
+  width: 100%; max-width: 480px; background: var(--card-bg);
   border: 1px solid var(--card-border); border-radius: 18px;
   backdrop-filter: blur(16px); display: flex; flex-direction: column; overflow: hidden;
 }
@@ -231,28 +365,31 @@
   padding: 1rem 1.2rem .8rem; font-size: 14px; font-weight: 700; color: var(--text);
   border-bottom: 1px solid var(--card-border);
 }
+/* Close button in modal — explicit visible colors */
+.todo-modal-close {
+  background: var(--s1); color: var(--text); border: 1.5px solid color-mix(in srgb, var(--text) 25%, transparent);
+  border-radius: 7px; font-size: 13px; font-weight: 700; padding: 3px 9px;
+  cursor: pointer; line-height: 1.4; transition: background .12s, color .12s, border-color .12s;
+}
+.todo-modal-close:hover { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); border-color: var(--red); }
+
 .todo-modal-body {
   padding: 1rem 1.2rem; display: flex; flex-direction: column;
   gap: .75rem; max-height: 60vh; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--s2) transparent;
 }
 .todo-field { display: flex; flex-direction: column; gap: .3rem; }
-.todo-field label { font-size: 12px; font-weight: 600; color: var(--text2); }
+.todo-field label { font-size: 12px; font-weight: 700; color: var(--text); }
 .todo-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
-.todo-textarea {
-  width: 100%; background: var(--s0); border: 1px solid var(--card-border);
-  border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text);
-  font-family: inherit; resize: vertical; outline: none; box-sizing: border-box;
-  transition: border-color .15s;
-}
-.todo-textarea:focus { border-color: var(--accent); }
 .todo-select {
-  width: 100%; background: var(--s0); border: 1px solid var(--card-border);
+  width: 100%; background: var(--s0); border: 1.5px solid var(--card-border);
   border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text);
-  font-family: inherit; outline: none; cursor: pointer;
+  font-family: inherit; outline: none; cursor: pointer; transition: border-color .15s;
 }
+.todo-select:focus { border-color: var(--accent); }
 .todo-timestamps {
-  display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--ov0);
-  border-top: 1px solid var(--card-border); padding-top: .6rem;
+  display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text2);
+  border-top: 1px solid var(--card-border); padding-top: .6rem; font-weight: 500;
 }
 .todo-modal-footer {
   display: flex; justify-content: space-between; align-items: center;

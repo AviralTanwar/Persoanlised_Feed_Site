@@ -27,6 +27,7 @@ app.use('/api/reactions',   newsInteractionsRouter);
 app.use('/api/web-notes',   webNotesRouter);
 app.use('/api/quotes',      quotesRouter);
 app.use('/api/weather-cities', weatherCitiesRouter);
+app.use('/api/user-info',      require('./routes/userInfo'));
 app.use('/api/credentials',    require('./routes/credentials'));
 app.use('/api/todo-summaries', require('./routes/todoSummaries'));
 app.use('/api/todos',          require('./routes/todos'));
