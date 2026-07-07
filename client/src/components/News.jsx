@@ -17,7 +17,7 @@ export default function News({ techRef }) {
   }, [])
 
   return (
-    <Card>
+    <Card className="news-card">
       <SectionHeader icon="📰" title="News" />
       <div className="newsgrid">
         {kpis.map(kpi => (
