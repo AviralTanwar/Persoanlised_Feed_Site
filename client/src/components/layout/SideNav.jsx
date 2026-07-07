@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { id: 'notes',        icon: '📓', label: 'OneNote' },
   { id: 'youtube',      icon: '🎬', label: 'YouTube' },
   { id: 'webpages',     icon: '🌐', label: 'Web Pages' },
+  { id: 'todo',         icon: '✅', label: 'To-Do' },
   { id: 'improvements', icon: '💡', label: 'Improvements' },
 ]
 

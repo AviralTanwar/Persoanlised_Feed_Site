@@ -83,6 +83,61 @@ db.exec(`
   DROP TABLE IF EXISTS tbl_news_kpi_sources;
   DROP TABLE IF EXISTS news_interactions;
 
+  -- User profile (single-row personal dashboard)
+  -- deleted_at = '0000-00-00 00:00:00' means active (sentinel, not NULL)
+  CREATE TABLE IF NOT EXISTS tbl_user_info (
+    user_id     INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    firstname   TEXT     NOT NULL,
+    lastname    TEXT     NOT NULL,
+    title       TEXT     DEFAULT '',
+    description TEXT     DEFAULT '',
+    number      TEXT     DEFAULT '',
+    email       TEXT     DEFAULT '',
+    username    TEXT     DEFAULT '',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00',
+    active      INTEGER  NOT NULL DEFAULT 1 CHECK(active IN (0, 1))
+  );
+
+  -- Stored credentials (password protected to-do unlock)
+  CREATE TABLE IF NOT EXISTS tbl_credentials (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    description TEXT     DEFAULT '',
+    user_name   TEXT     DEFAULT '',
+    password    TEXT     NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
+
+  -- Kanban boards
+  CREATE TABLE IF NOT EXISTS tbl_to_do_summary (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name        TEXT     NOT NULL,
+    description TEXT     DEFAULT '',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
+
+  -- Kanban task cards (status = column)
+  CREATE TABLE IF NOT EXISTS tbl_to_do (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    summary_id  INTEGER  NOT NULL REFERENCES tbl_to_do_summary(id),
+    title       TEXT     NOT NULL,
+    description TEXT     DEFAULT '',
+    status      TEXT     NOT NULL DEFAULT 'pending'
+                         CHECK(status IN ('pending','in_progress','done')),
+    priority    TEXT     NOT NULL DEFAULT 'medium'
+                         CHECK(priority IN ('low','medium','high')),
+    due_date    TEXT     DEFAULT NULL,
+    position    INTEGER  DEFAULT 0,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
+
   CREATE TABLE IF NOT EXISTS web_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     page_id TEXT NOT NULL,

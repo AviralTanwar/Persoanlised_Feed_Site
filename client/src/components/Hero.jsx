@@ -1,7 +1,7 @@
 import useTime from '../hooks/useTime'
 import './Hero.css'
 
-export default function Hero({ clock }) {
+export default function Hero({ clock, user }) {
   const now = useTime()
 
   const hr = now.getHours()
@@ -11,6 +11,8 @@ export default function Hero({ clock }) {
     hr < 17 ? 'Good afternoon' :
     hr < 21 ? 'Good evening' :
               'Working late'
+
+  const name = user?.firstname ? `, ${user.firstname}` : ''
 
   const timeStr = now.toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -23,7 +25,7 @@ export default function Hero({ clock }) {
     <div className="hero-card">
       <div className="hero-greet">
         <span className="live-dot" />
-        {greeting} · Live
+        {greeting}{name} · Live
       </div>
       <span className="hero-scanline" aria-hidden="true" />
       <div className="hero-date">
