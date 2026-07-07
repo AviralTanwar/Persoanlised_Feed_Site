@@ -5,10 +5,10 @@ const NAV_ITEMS = [
   { id: 'weather',      icon: '🌤️', label: 'Weather' },
   { id: 'news',         icon: '📰', label: 'National News' },
   { id: 'tech',         icon: '💻', label: 'Tech News' },
-  { id: 'notes',        icon: '📓', label: 'OneNote' },
-  { id: 'youtube',      icon: '🎬', label: 'YouTube' },
-  { id: 'webpages',     icon: '🌐', label: 'Web Pages' },
   { id: 'todo',         icon: '✅', label: 'To-Do' },
+  { id: 'webpages',     icon: '🌐', label: 'Web Pages' },
+  { id: 'youtube',      icon: '🎬', label: 'YouTube' },
+  { id: 'notes',        icon: '📓', label: 'OneNote' },
   { id: 'improvements', icon: '💡', label: 'Improvements' },
 ]
 

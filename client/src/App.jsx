@@ -199,9 +199,9 @@ export default function App() {
           <ToDo />
         </section>
 
-        {/* OneNote */}
-        <section id="notes" className="sec reveal" ref={setRef('notes')}>
-          <OneNote />
+        {/* Web Pages */}
+        <section id="webpages" className="sec reveal" ref={setRef('webpages')}>
+          <WebPages />
         </section>
 
         {/* YouTube */}
@@ -209,9 +209,9 @@ export default function App() {
           <YouTube />
         </section>
 
-        {/* Web Pages */}
-        <section id="webpages" className="sec reveal" ref={setRef('webpages')}>
-          <WebPages />
+        {/* OneNote */}
+        <section id="notes" className="sec reveal" ref={setRef('notes')}>
+          <OneNote />
         </section>
 
         {/* Improvements */}
