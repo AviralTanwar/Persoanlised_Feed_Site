@@ -215,7 +215,7 @@ export default function ToDo() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Card className="todo-card">
+    <Card className={`todo-card${isUnlocked ? ' todo-card--open' : ''}`}>
       <div className="todo-header-bar">
         <SectionHeader icon="✅" title="To-Do" />
         {isUnlocked && (
@@ -398,6 +398,10 @@ export default function ToDo() {
                                     <button className="todo-btn-secondary" style={{ fontSize: 11 }}
                                       onClick={e => { e.stopPropagation(); patchTask(task.id, { status: STATUS_NEXT[task.status] }).then(() => loadBoards()) }}>
                                       → {COLUMNS.find(c => c.key === STATUS_NEXT[task.status])?.label}
+                                    </button>
+                                    <button className="todo-btn-danger" style={{ fontSize: 11, marginLeft: 'auto' }}
+                                      onClick={e => { e.stopPropagation(); if (window.confirm('Delete this task?')) deleteTask(task.id) }}>
+                                      🗑
                                     </button>
                                   </div>
                                 </div>

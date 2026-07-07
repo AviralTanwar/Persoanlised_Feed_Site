@@ -1,6 +1,9 @@
 /* Disable Card 3D tilt (overflow:hidden + perspective breaks pointer events) */
 .todo-card, .todo-card:hover { transform: none !important; box-shadow: var(--card-inset), var(--shadow-card); }
 
+/* Compact when locked, fixed large once unlocked */
+.todo-card--open { min-height: 660px; }
+
 /* ── Shared buttons — explicit color so they work in dark + light ── */
 .todo-btn-primary {
   padding: 6px 14px; background: var(--accent); color: var(--base);
