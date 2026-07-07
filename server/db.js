@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+const bcrypt   = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
@@ -224,6 +225,15 @@ if (n === 0) {
     ['Morning run — 5 km daily', 'Build from 3 km over 2 weeks. Before 6:30 AM.', 'medium', 'pending'],
   ];
   for (const row of seeds) insert.run(...row);
+}
+
+// Seed to-do unlock password (bcrypt-hashed, seeded once)
+const { n: credCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_credentials').get();
+if (credCount === 0) {
+  const hash = bcrypt.hashSync('TanWar@951753', 12);
+  db.prepare(
+    "INSERT INTO tbl_credentials (description, password) VALUES ('todo', ?)"
+  ).run(hash);
 }
 
 module.exports = db;

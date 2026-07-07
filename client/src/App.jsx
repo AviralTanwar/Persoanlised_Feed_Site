@@ -12,7 +12,6 @@ import WebPages     from './components/WebPages'
 import Improvements from './components/Improvements'
 import YearKPI      from './components/YearKPI'
 import ToDo         from './components/ToDo'
-import Setup        from './components/Setup'
 
 import './App.css'
 
@@ -32,17 +31,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('weather')
   const [tweaksOpen, setTweaksOpen]     = useState(false)
   const [excuses, setExcuses]           = useState([])
-  const [user, setUser]                 = useState(null)
-  const [userLoading, setUserLoading]   = useState(true)
   const sectionRefs = useRef({})
-
-  // ── Load user (determines setup vs dashboard) ──
-  useEffect(() => {
-    fetch('/api/user-info')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { setUser(d); setUserLoading(false) })
-      .catch(() => setUserLoading(false))
-  }, [])
 
   // ── Load excuses ──
   useEffect(() => {
@@ -120,9 +109,6 @@ export default function App() {
   function setTweak(key, val) { setTweaks(t => ({ ...t, [key]: val })) }
   function toggleTheme() { setTheme(t => t === 'dark' ? 'light' : 'dark') }
 
-  if (userLoading) return <div className="shell" style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--s1)' }}>Loading…</div>
-  if (!user) return <Setup onComplete={u => setUser(u)} />
-
   return (
     <div className="shell">
       {/* ── Backgrounds ── */}
@@ -194,7 +180,7 @@ export default function App() {
 
         {/* Hero band */}
         <div className="hero-band reveal">
-          <Hero clock={tweaks.clock} user={user} />
+          <Hero clock={tweaks.clock} />
           <QuoteBanner excuses={excuses} />
         </div>
 
@@ -225,7 +211,7 @@ export default function App() {
 
         {/* To-Do */}
         <section id="todo" className="sec reveal" ref={setRef('todo')}>
-          <ToDo user={user} />
+          <ToDo />
         </section>
 
         {/* Improvements */}
