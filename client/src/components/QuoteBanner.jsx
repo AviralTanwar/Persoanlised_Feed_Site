@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './QuoteBanner.css'
 
 const MOT_FALLBACK = [
@@ -23,6 +23,7 @@ async function fetchMotivation() {
 }
 
 export default function QuoteBanner({ excuses }) {
+  const ref = useRef()
   const [excuseIdx, setExcuseIdx] = useState(() => Math.floor(Math.random() * (excuses?.length || 1)))
   const [excuseFade, setExcuseFade] = useState(true)
   const [quote, setQuote] = useState(null)
@@ -54,8 +55,21 @@ export default function QuoteBanner({ excuses }) {
 
   const excuse = excuses?.[excuseIdx] ?? '…'
 
+  function onMouseMove(e) {
+    const el = ref.current
+    const r  = el.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width
+    const py = (e.clientY - r.top)  / r.height
+    el.style.setProperty('--rx', `${((px - 0.5) * 7).toFixed(2)}deg`)
+    el.style.setProperty('--ry', `${(-(py - 0.5) * 7).toFixed(2)}deg`)
+  }
+  function onMouseLeave() {
+    ref.current.style.setProperty('--rx', '0deg')
+    ref.current.style.setProperty('--ry', '0deg')
+  }
+
   return (
-    <div className="quote-card">
+    <div className="quote-card" ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="quote-block">
         <div className="quote-label dev">⚡ Developer Excuse</div>
         <div className="quote-txt" style={{ opacity: excuseFade ? 1 : 0 }}>"{excuse}"</div>

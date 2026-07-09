@@ -6,7 +6,8 @@ import './Improvements.css'
 const PRI_COLOR = { high: 'var(--red)', medium: 'var(--yellow)', low: 'var(--green)' }
 const STATUS_LABEL = { pending: '⏳ Pending', in_progress: '🔄 In Progress', done: '✅ Done' }
 
-export default function Improvements() {
+export default function Improvements({ viewKpi = {} }) {
+  const viewTitle = viewKpi.name || 'Improvements Tracker'
   const [items, setItems]     = useState([])
   const [filters, setFilters] = useState(['pending', 'in_progress'])
   const [adding, setAdding]   = useState(false)
@@ -58,7 +59,7 @@ export default function Improvements() {
     <Card>
       <SectionHeader
         icon="💡"
-        title="Improvements Tracker"
+        title={viewTitle}
         right={
           <button className="btn-p" style={{ fontSize: 11, padding: '4px 12px' }} onClick={() => setAdding(v => !v)}>
             {adding ? '✕ Close' : '+ Add'}

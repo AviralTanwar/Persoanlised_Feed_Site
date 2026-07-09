@@ -24,6 +24,13 @@ const ACCENT_PALETTE = {
   light: { blue: '#1e66f5', mauve: '#8839ef', peach: '#fe640b', teal: '#179299' },
 }
 
+// Fallback order used until /api/view-kpis responds
+const DEFAULT_VIEW_KPIS = [
+  { id: 1, name: 'Web Pages',    description: 'Web page viewer with notes', rank: 1 },
+  { id: 2, name: 'YouTube',      description: 'YouTube video viewer with notes', rank: 2 },
+  { id: 3, name: 'Improvements', description: 'Goal and improvement tracker', rank: 3 },
+]
+
 export default function App() {
   const [theme,  setTheme]  = useLocalStorage('theme',  'dark')
   const [tweaks, setTweaks] = useLocalStorage('tweaks', DEFAULT_TWEAKS)
@@ -31,11 +38,19 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('weather')
   const [tweaksOpen, setTweaksOpen]     = useState(false)
   const [excuses, setExcuses]           = useState([])
+  const [viewKpis, setViewKpis]         = useState(DEFAULT_VIEW_KPIS)
   const sectionRefs = useRef({})
 
   // ── Load excuses ──
   useEffect(() => {
     fetch('/api/static/excuses').then(r => r.json()).then(setExcuses)
+  }, [])
+
+  // ── Load view KPI order + names ──
+  useEffect(() => {
+    fetch('/api/view-kpis').then(r => r.json()).then(d => {
+      if (Array.isArray(d) && d.length) setViewKpis(d)
+    }).catch(() => {})
   }, [])
 
   // ── Apply theme to <html> ──
@@ -108,6 +123,25 @@ export default function App() {
   function setRef(id) { return el => { sectionRefs.current[id] = el } }
   function setTweak(key, val) { setTweaks(t => ({ ...t, [key]: val })) }
   function toggleTheme() { setTheme(t => t === 'dark' ? 'light' : 'dark') }
+
+  function renderViewSection(kpi) {
+    if (kpi.id === 1) return (
+      <section key={kpi.id} id="webpages" className="sec reveal" ref={setRef('webpages')}>
+        <WebPages viewKpi={kpi} />
+      </section>
+    )
+    if (kpi.id === 2) return (
+      <section key={kpi.id} id="youtube" className="sec reveal" ref={setRef('youtube')}>
+        <YouTube viewKpi={kpi} />
+      </section>
+    )
+    if (kpi.id === 3) return (
+      <section key={kpi.id} id="improvements" className="sec reveal" ref={setRef('improvements')}>
+        <Improvements viewKpi={kpi} />
+      </section>
+    )
+    return null
+  }
 
   return (
     <div className="shell">
@@ -199,24 +233,12 @@ export default function App() {
           <ToDo />
         </section>
 
-        {/* Web Pages */}
-        <section id="webpages" className="sec reveal" ref={setRef('webpages')}>
-          <WebPages />
-        </section>
-
-        {/* YouTube */}
-        <section id="youtube" className="sec reveal" ref={setRef('youtube')}>
-          <YouTube />
-        </section>
+        {/* Web Pages / YouTube / Improvements — ordered by tbl_view_kpi.rank */}
+        {viewKpis.map(renderViewSection)}
 
         {/* OneNote */}
         <section id="notes" className="sec reveal" ref={setRef('notes')}>
           <OneNote />
-        </section>
-
-        {/* Improvements */}
-        <section id="improvements" className="sec reveal" ref={setRef('improvements')}>
-          <Improvements />
         </section>
       </main>
     </div>

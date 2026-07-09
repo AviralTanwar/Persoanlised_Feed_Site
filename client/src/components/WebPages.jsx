@@ -3,16 +3,16 @@ import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import './WebPages.css'
 
-// view_id=1 corresponds to the 'Web Pages' row in tbl_view_kpi (seeded on first run)
-const WEB_VIEW_ID = 1
-const MAX_NOTES   = 5
+const MAX_NOTES = 5
 
 function fmtDate(dt) {
   if (!dt) return ''
   return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function WebPages() {
+export default function WebPages({ viewKpi = {} }) {
+  const viewId    = viewKpi.id   || 1
+  const viewTitle = viewKpi.name || 'Web Pages'
   const [pages, setPages]             = useState([])   // tbl_notes rows (entity_type='web_page')
   const [activePage, setActivePage]   = useState(null) // selected tbl_notes row
   const [notes, setNotes]             = useState([])   // tbl_notes_data rows for activePage
@@ -66,7 +66,7 @@ export default function WebPages() {
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url
     const p = await fetch('/api/notes', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_type: 'web_page', entity_id: url, view_id: WEB_VIEW_ID, title: newPage.title.trim(), description: newPage.description.trim(), url }),
+      body: JSON.stringify({ entity_type: 'web_page', entity_id: url, view_id: viewId, title: newPage.title.trim(), description: newPage.description.trim(), url }),
     }).then(r => r.json())
     setNewPage({ title: '', url: '', description: '' }); setAddingPage(false)
     await loadPages(); setActivePage(p); setNotes([])
@@ -111,7 +111,7 @@ export default function WebPages() {
   return (
     <Card className="wp-card">
       <div className="wp-header-bar">
-        <SectionHeader icon="🌐" title="Web Pages" />
+        <SectionHeader icon="🌐" title={viewTitle} />
         <button className="wp-toggle-btn" onClick={() => setSidebarOpen(o => !o)}>
           {sidebarOpen ? '◀ Hide' : '▶ Pages'}
         </button>

@@ -21,5 +21,6 @@ app.use('/api/credentials',    require('./routes/credentials'));
 app.use('/api/todo-summaries', require('./routes/todoSummaries'));
 app.use('/api/todos',          require('./routes/todos'));
 app.use('/api/notes',          require('./routes/notes'));
+app.use('/api/view-kpis',      require('./routes/viewKpis'));
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
