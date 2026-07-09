@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
+import RichEditor from './shared/RichEditor'
 import './YouTube.css'
+
+const isEmptyHtml = h => !h || h.replace(/<[^>]*>/g, '').trim() === ''
 
 const MAX_NOTES = 5
 
@@ -58,7 +61,7 @@ export default function YouTube({ viewKpi = {} }) {
 
   async function createNote(e) {
     e.preventDefault()
-    if (!noteDraft.content.trim() || !noteEntity) return
+    if (isEmptyHtml(noteDraft.content) || !noteEntity) return
     if (notes.length >= MAX_NOTES) { alert(`Max ${MAX_NOTES} notes per video`); return }
     const n = await fetch(`/api/notes/${noteEntity.id}/data`, {
       method: 'POST',
@@ -134,14 +137,15 @@ export default function YouTube({ viewKpi = {} }) {
               </div>
 
               {addingNote && (
-                <form onSubmit={createNote} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <form onSubmit={createNote} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <input className="fld" placeholder="Note title (optional)"
                     value={noteDraft.title}
                     onChange={e => setNoteDraft(d => ({ ...d, title: e.target.value }))} />
-                  <textarea className="fld" rows={3} placeholder="Note content *"
-                    value={noteDraft.content}
-                    onChange={e => setNoteDraft(d => ({ ...d, content: e.target.value }))}
-                    onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') createNote(e) }} />
+                  <RichEditor
+                    content={noteDraft.content}
+                    onChange={html => setNoteDraft(d => ({ ...d, content: html }))}
+                    placeholder="Write your note…"
+                  />
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn-p" type="submit" style={{ fontSize: 12, padding: '5px 14px' }}>💾 Save</button>
                     <button className="btn-g" type="button" style={{ fontSize: 12, padding: '5px 14px' }}
@@ -157,11 +161,14 @@ export default function YouTube({ viewKpi = {} }) {
               {notes.map(n => (
                 <div key={n.id} className="yt-note" style={{ borderLeftColor: 'var(--accent)' }}>
                   {editingNote?.id === n.id ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <input className="fld" value={editNoteDraft.title}
                         onChange={e => setEditNoteDraft(d => ({ ...d, title: e.target.value }))} />
-                      <textarea className="fld" rows={3} value={editNoteDraft.content}
-                        onChange={e => setEditNoteDraft(d => ({ ...d, content: e.target.value }))} />
+                      <RichEditor
+                        content={editNoteDraft.content}
+                        onChange={html => setEditNoteDraft(d => ({ ...d, content: html }))}
+                        placeholder="Edit note…"
+                      />
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn-p" style={{ fontSize: 11, padding: '4px 12px' }} onClick={updateNote}>Save</button>
                         <button className="btn-g" style={{ fontSize: 11, padding: '4px 12px' }} onClick={() => setEditingNote(null)}>Cancel</button>
@@ -170,7 +177,7 @@ export default function YouTube({ viewKpi = {} }) {
                   ) : (
                     <>
                       {n.title && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>{n.title}</div>}
-                      <div className="yt-note-text">{n.content}</div>
+                      <div className="yt-note-text rich-display" dangerouslySetInnerHTML={{ __html: n.content }} />
                       <div className="yt-note-foot">
                         <span>{fmtDate(n.created_at)}</span>
                         <div style={{ display: 'flex', gap: 4 }}>

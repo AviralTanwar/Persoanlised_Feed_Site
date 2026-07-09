@@ -24,11 +24,17 @@ const ACCENT_PALETTE = {
   light: { blue: '#1e66f5', mauve: '#8839ef', peach: '#fe640b', teal: '#179299' },
 }
 
-// Fallback order used until /api/view-kpis responds
+// Fallback used until /api/view-kpis responds (IDs match what the DB seeds produce)
 const DEFAULT_VIEW_KPIS = [
-  { id: 1, name: 'Web Pages',    description: 'Web page viewer with notes', rank: 1 },
-  { id: 2, name: 'YouTube',      description: 'YouTube video viewer with notes', rank: 2 },
-  { id: 3, name: 'Improvements', description: 'Goal and improvement tracker', rank: 3 },
+  { id: 4, section_key: 'year_kpi',     name: 'Year Progress', rank: 1 },
+  { id: 5, section_key: 'hero_band',    name: 'Time & Quotes', rank: 2 },
+  { id: 6, section_key: 'weather',      name: 'Weather',       rank: 3 },
+  { id: 7, section_key: 'news',         name: 'News',          rank: 4 },
+  { id: 8, section_key: 'todo',         name: 'To-Do',         rank: 5 },
+  { id: 1, section_key: 'web_pages',    name: 'Web Pages',     rank: 6 },
+  { id: 2, section_key: 'youtube',      name: 'YouTube',       rank: 7 },
+  { id: 3, section_key: 'improvements', name: 'Improvements',  rank: 8 },
+  { id: 9, section_key: 'onenote',      name: 'OneNote',       rank: 9 },
 ]
 
 export default function App() {
@@ -125,22 +131,61 @@ export default function App() {
   function toggleTheme() { setTheme(t => t === 'dark' ? 'light' : 'dark') }
 
   function renderViewSection(kpi) {
-    if (kpi.id === 1) return (
-      <section key={kpi.id} id="webpages" className="sec reveal" ref={setRef('webpages')}>
-        <WebPages viewKpi={kpi} />
-      </section>
-    )
-    if (kpi.id === 2) return (
-      <section key={kpi.id} id="youtube" className="sec reveal" ref={setRef('youtube')}>
-        <YouTube viewKpi={kpi} />
-      </section>
-    )
-    if (kpi.id === 3) return (
-      <section key={kpi.id} id="improvements" className="sec reveal" ref={setRef('improvements')}>
-        <Improvements viewKpi={kpi} />
-      </section>
-    )
-    return null
+    switch (kpi.section_key) {
+      case 'year_kpi':
+        return <div key={kpi.id} className="reveal"><YearKPI /></div>
+      case 'hero_band':
+        return (
+          <div key={kpi.id} className="hero-band reveal">
+            <Hero clock={tweaks.clock} />
+            <QuoteBanner excuses={excuses} />
+          </div>
+        )
+      case 'weather':
+        return (
+          <section key={kpi.id} id="weather" className="sec reveal" ref={setRef('weather')}>
+            <Weather />
+          </section>
+        )
+      case 'news':
+        return (
+          <section key={kpi.id} id="news" className="sec reveal" ref={setRef('news')}>
+            <News techRef={setRef('tech')} />
+          </section>
+        )
+      case 'todo':
+        return (
+          <section key={kpi.id} id="todo" className="sec reveal" ref={setRef('todo')}>
+            <ToDo />
+          </section>
+        )
+      case 'web_pages':
+        return (
+          <section key={kpi.id} id="webpages" className="sec reveal" ref={setRef('webpages')}>
+            <WebPages viewKpi={kpi} />
+          </section>
+        )
+      case 'youtube':
+        return (
+          <section key={kpi.id} id="youtube" className="sec reveal" ref={setRef('youtube')}>
+            <YouTube viewKpi={kpi} />
+          </section>
+        )
+      case 'improvements':
+        return (
+          <section key={kpi.id} id="improvements" className="sec reveal" ref={setRef('improvements')}>
+            <Improvements viewKpi={kpi} />
+          </section>
+        )
+      case 'onenote':
+        return (
+          <section key={kpi.id} id="notes" className="sec reveal" ref={setRef('notes')}>
+            <OneNote />
+          </section>
+        )
+      default:
+        return null
+    }
   }
 
   return (
@@ -207,39 +252,9 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Page content ── */}
+      {/* ── Page content — order driven by tbl_view_kpi.rank ── */}
       <main className="content">
-        {/* Year KPI */}
-        <div className="reveal"><YearKPI /></div>
-
-        {/* Hero band */}
-        <div className="hero-band reveal">
-          <Hero clock={tweaks.clock} />
-          <QuoteBanner excuses={excuses} />
-        </div>
-
-        {/* Weather */}
-        <section id="weather" className="sec reveal" ref={setRef('weather')}>
-          <Weather />
-        </section>
-
-        {/* News */}
-        <section id="news" className="sec reveal" ref={setRef('news')}>
-          <News techRef={setRef('tech')} />
-        </section>
-
-        {/* To-Do */}
-        <section id="todo" className="sec reveal" ref={setRef('todo')}>
-          <ToDo />
-        </section>
-
-        {/* Web Pages / YouTube / Improvements — ordered by tbl_view_kpi.rank */}
         {viewKpis.map(renderViewSection)}
-
-        {/* OneNote */}
-        <section id="notes" className="sec reveal" ref={setRef('notes')}>
-          <OneNote />
-        </section>
       </main>
     </div>
   )

@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
+import RichEditor from './shared/RichEditor'
 import './WebPages.css'
+
+const isEmptyHtml = h => !h || h.replace(/<[^>]*>/g, '').trim() === ''
 
 const MAX_NOTES = 5
 
@@ -82,7 +85,7 @@ export default function WebPages({ viewKpi = {} }) {
   // ── Notes CRUD ────────────────────────────────────────────────────────────
   async function createNote(e) {
     e.preventDefault()
-    if (!noteDraft.content.trim() || !activePage) return
+    if (isEmptyHtml(noteDraft.content) || !activePage) return
     if (notes.length >= MAX_NOTES) { alert(`Max ${MAX_NOTES} notes per page`); return }
     const n = await fetch(`/api/notes/${activePage.id}/data`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -200,9 +203,12 @@ export default function WebPages({ viewKpi = {} }) {
                   <form className="wp-note-form" onSubmit={createNote}>
                     <input ref={noteInputRef} className="wp-input" placeholder="Note title (optional)"
                       value={noteDraft.title} onChange={e => setNoteDraft(d => ({ ...d, title: e.target.value }))} />
-                    <textarea className="wp-textarea" placeholder="Note content *" rows={3}
-                      value={noteDraft.content} onChange={e => setNoteDraft(d => ({ ...d, content: e.target.value }))} />
-                    <div className="wp-btn-row">
+                    <RichEditor
+                      content={noteDraft.content}
+                      onChange={html => setNoteDraft(d => ({ ...d, content: html }))}
+                      placeholder="Write your note…"
+                    />
+                    <div className="wp-btn-row" style={{ marginTop: 6 }}>
                       <button className="wp-btn-primary" type="submit">Save</button>
                       <button className="wp-btn-secondary" type="button" onClick={() => setAddingNote(false)}>Cancel</button>
                     </div>
@@ -215,9 +221,12 @@ export default function WebPages({ viewKpi = {} }) {
                       <div className="wp-note-edit">
                         <input className="wp-input" value={editNoteDraft.title}
                           onChange={e => setEditNoteDraft(d => ({ ...d, title: e.target.value }))} />
-                        <textarea className="wp-textarea" rows={3} value={editNoteDraft.content}
-                          onChange={e => setEditNoteDraft(d => ({ ...d, content: e.target.value }))} />
-                        <div className="wp-btn-row">
+                        <RichEditor
+                          content={editNoteDraft.content}
+                          onChange={html => setEditNoteDraft(d => ({ ...d, content: html }))}
+                          placeholder="Edit note…"
+                        />
+                        <div className="wp-btn-row" style={{ marginTop: 6 }}>
                           <button className="wp-btn-primary" style={{ fontSize: 11 }} onClick={updateNote}>Save</button>
                           <button className="wp-btn-secondary" style={{ fontSize: 11 }} onClick={() => setEditingNote(null)}>Cancel</button>
                         </div>
@@ -225,7 +234,7 @@ export default function WebPages({ viewKpi = {} }) {
                     ) : (
                       <>
                         {n.title && <div className="wp-note-title">{n.title}</div>}
-                        <div className="wp-note-content">{n.content}</div>
+                        <div className="wp-note-content rich-display" dangerouslySetInnerHTML={{ __html: n.content }} />
                         <div className="wp-note-meta">
                           <span>{fmtDate(n.created_at)}</span>
                           <div className="wp-btn-row">

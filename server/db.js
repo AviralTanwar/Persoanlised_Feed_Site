@@ -209,13 +209,39 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
-// Seed tbl_view_kpi (each section that uses tbl_notes gets a view row)
-const { n: viewCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_view_kpi').get();
-if (viewCount === 0) {
-  const insertView = db.prepare('INSERT INTO tbl_view_kpi (name, description, rank) VALUES (?, ?, ?)');
-  insertView.run('Web Pages',    'Web page viewer with notes', 1);
-  insertView.run('YouTube',      'YouTube video viewer with notes', 2);
-  insertView.run('Improvements', 'Goal and improvement tracker', 3);
+// Migration: add section_key column so each row knows which dashboard component it drives
+const viewCols = db.prepare('PRAGMA table_info(tbl_view_kpi)').all().map(c => c.name);
+if (!viewCols.includes('section_key')) {
+  db.exec(`ALTER TABLE tbl_view_kpi ADD COLUMN section_key TEXT NOT NULL DEFAULT ''`);
+  // Stamp existing rows and slide their ranks to 6-8 to make room for the new sections above them
+  db.prepare("UPDATE tbl_view_kpi SET section_key='web_pages',    rank=6 WHERE id=1").run();
+  db.prepare("UPDATE tbl_view_kpi SET section_key='youtube',      rank=7 WHERE id=2").run();
+  db.prepare("UPDATE tbl_view_kpi SET section_key='improvements', rank=8 WHERE id=3").run();
+}
+
+// Seed tbl_view_kpi — all dashboard sections, idempotent by section_key
+const existingKeys = new Set(
+  db.prepare("SELECT section_key FROM tbl_view_kpi WHERE section_key != '' AND deleted_at='0000-00-00 00:00:00'")
+    .all().map(r => r.section_key)
+);
+const viewSeeds = [
+  { name: 'Year Progress', description: 'Days-left counter and year progress ring',  rank: 1, section_key: 'year_kpi'      },
+  { name: 'Time & Quotes', description: 'Live clock and motivational quotes',         rank: 2, section_key: 'hero_band'     },
+  { name: 'Weather',       description: 'Live weather for saved cities',              rank: 3, section_key: 'weather'       },
+  { name: 'News',          description: 'National and tech news feed',                rank: 4, section_key: 'news'          },
+  { name: 'To-Do',         description: 'Kanban task board',                          rank: 5, section_key: 'todo'          },
+  { name: 'Web Pages',     description: 'Web page viewer with notes',                 rank: 6, section_key: 'web_pages'    },
+  { name: 'YouTube',       description: 'YouTube video viewer with notes',            rank: 7, section_key: 'youtube'      },
+  { name: 'Improvements',  description: 'Goal and improvement tracker',               rank: 8, section_key: 'improvements' },
+  { name: 'OneNote',       description: 'Quick notes scratchpad',                     rank: 9, section_key: 'onenote'      },
+];
+{
+  const insertView = db.prepare(
+    'INSERT INTO tbl_view_kpi (name, description, rank, section_key) VALUES (@name, @description, @rank, @section_key)'
+  );
+  for (const seed of viewSeeds) {
+    if (!existingKeys.has(seed.section_key)) insertView.run(seed);
+  }
 }
 
 // Migrations: add columns if upgrading from an older tbl_news_data

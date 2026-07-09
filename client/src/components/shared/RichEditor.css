@@ -1,0 +1,196 @@
+/* ── Rich text editor wrapper ─────────────────────────────────────────── */
+
+.re-wrap {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+
+.re-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  background: color-mix(in srgb, var(--card-bg) 60%, var(--bg));
+  border-bottom: 1px solid var(--card-border);
+}
+
+.re-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+
+.re-btn:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--text);
+}
+
+.re-btn.on {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+
+.re-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: var(--card-border);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.re-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--sc);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .12s, border-color .12s;
+  flex-shrink: 0;
+}
+
+.re-swatch:hover  { transform: scale(1.25); }
+.re-swatch.on     { border-color: var(--text); transform: scale(1.15); }
+
+/* ── Editor content area ──────────────────────────────────────────────── */
+
+.re-content {
+  flex: 1;
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+.re-content .ProseMirror {
+  min-height: 180px;
+  outline: none;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+/* Placeholder */
+.re-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--ov1);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ── Shared typography — editor + read-only display ───────────────────── */
+
+.re-content .ProseMirror h1, .rich-display h1 {
+  font-size: 1.35em;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0.7em 0 0.3em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.re-content .ProseMirror h2, .rich-display h2 {
+  font-size: 1.12em;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0.6em 0 0.25em;
+}
+
+.re-content .ProseMirror h3, .rich-display h3 {
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0.5em 0 0.2em;
+}
+
+.re-content .ProseMirror h1:first-child,
+.re-content .ProseMirror h2:first-child,
+.re-content .ProseMirror h3:first-child,
+.rich-display h1:first-child,
+.rich-display h2:first-child,
+.rich-display h3:first-child { margin-top: 0; }
+
+.re-content .ProseMirror p, .rich-display p {
+  margin: 0.2em 0;
+}
+
+.re-content .ProseMirror > * + * { margin-top: 0.4em; }
+
+.re-content .ProseMirror ul, .rich-display ul,
+.re-content .ProseMirror ol,  .rich-display ol {
+  padding-left: 1.5em;
+  margin: 0.3em 0;
+}
+
+.re-content .ProseMirror li, .rich-display li {
+  margin: 0.15em 0;
+  line-height: 1.5;
+}
+
+.re-content .ProseMirror blockquote, .rich-display blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 4px 12px;
+  margin: 0.4em 0;
+  color: var(--ov0);
+  font-style: italic;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.re-content .ProseMirror code, .rich-display code {
+  font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.87em;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card-bg));
+  border: 1px solid var(--card-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.re-content .ProseMirror pre, .rich-display pre {
+  background: color-mix(in srgb, var(--bg) 80%, #000);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0.4em 0;
+  overflow-x: auto;
+}
+
+.re-content .ProseMirror pre code, .rich-display pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+  color: var(--text);
+  border-radius: 0;
+}
+
+.re-content .ProseMirror strong, .rich-display strong { font-weight: 700; color: var(--text); }
+.re-content .ProseMirror em,     .rich-display em     { font-style: italic; }
+.re-content .ProseMirror s,      .rich-display s      { opacity: .65; }
+
+/* ── Read-only display ────────────────────────────────────────────────── */
+
+.rich-display {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text2);
+}
