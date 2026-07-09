@@ -83,6 +83,11 @@ db.exec(`
 
   DROP TABLE IF EXISTS tbl_news_kpi_sources;
   DROP TABLE IF EXISTS news_interactions;
+  -- Legacy unused tables (replaced by tbl_notes / tbl_news_data)
+  DROP TABLE IF EXISTS notes;
+  DROP TABLE IF EXISTS highlights;
+  DROP TABLE IF EXISTS interactions;
+  DROP TABLE IF EXISTS web_notes;
 
   -- User profile (single-row personal dashboard)
   -- deleted_at = '0000-00-00 00:00:00' means active (sentinel, not NULL)
@@ -151,12 +156,31 @@ db.exec(`
     deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
   );
 
-  CREATE TABLE IF NOT EXISTS web_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    page_id TEXT NOT NULL,
-    page_title TEXT DEFAULT '',
-    content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  -- Unified note entity wrapper: web pages, youtube videos, improvements
+  -- entity_id = URL (web/yt) or improvement row id; url populated for web/yt only.
+  -- view_id → tbl_view_kpi.id (which dashboard section this entity belongs to).
+  CREATE TABLE IF NOT EXISTS tbl_notes (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    entity_type TEXT     NOT NULL CHECK(entity_type IN ('web_page','youtube','improvement')),
+    entity_id   TEXT     NOT NULL,
+    view_id     INTEGER  NOT NULL REFERENCES tbl_view_kpi(id),
+    title       TEXT     DEFAULT '',
+    description TEXT     DEFAULT '',
+    url         TEXT     DEFAULT '',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
+
+  -- Actual note content entries (up to 5 per entity in UI for now)
+  CREATE TABLE IF NOT EXISTS tbl_notes_data (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    entity_id   INTEGER  NOT NULL REFERENCES tbl_notes(id),
+    title       TEXT     DEFAULT '',
+    content     TEXT     NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
   );
 
   CREATE TABLE IF NOT EXISTS weathers (
@@ -169,6 +193,30 @@ db.exec(`
     deleted_at DATETIME DEFAULT NULL
   );
 `);
+
+// Migration: rename improvement_notes → tbl_improvements (naming convention)
+const allTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+if (allTables.includes('improvement_notes') && !allTables.includes('tbl_improvements')) {
+  db.exec('ALTER TABLE improvement_notes RENAME TO tbl_improvements');
+}
+// Create tbl_improvements if it doesn't exist at all (fresh install)
+db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  detail TEXT DEFAULT '',
+  priority TEXT CHECK(priority IN ('low','medium','high')) DEFAULT 'medium',
+  status TEXT CHECK(status IN ('pending','in_progress','done')) DEFAULT 'pending',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Seed tbl_view_kpi (each section that uses tbl_notes gets a view row)
+const { n: viewCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_view_kpi').get();
+if (viewCount === 0) {
+  const insertView = db.prepare('INSERT INTO tbl_view_kpi (name, description, rank) VALUES (?, ?, ?)');
+  insertView.run('Web Pages',    'Web page viewer with notes', 1);
+  insertView.run('YouTube',      'YouTube video viewer with notes', 2);
+  insertView.run('Improvements', 'Goal and improvement tracker', 3);
+}
 
 // Migrations: add columns if upgrading from an older tbl_news_data
 const newsCols = db.prepare('PRAGMA table_info(tbl_news_data)').all().map(c => c.name);
