@@ -11,6 +11,15 @@
   border: 1px solid var(--card-border);
   box-shadow: var(--card-inset), var(--shadow-card);
   margin-bottom: 1.2rem;
+  transform: perspective(1100px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg));
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .35s, border-color .35s;
+}
+.ykpi-card:hover {
+  transform: perspective(1100px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)) translateY(-4px) translateZ(4px);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: var(--card-inset), var(--shadow-card-hover), 0 0 28px -10px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* ── Left / Right stat blocks ── */

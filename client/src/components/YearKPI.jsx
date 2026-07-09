@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import './YearKPI.css'
 
 function statusColor(pctLeft) {
@@ -8,6 +9,8 @@ function statusColor(pctLeft) {
 }
 
 export default function YearKPI() {
+  const ref = useRef()
+
   const now       = new Date()
   const year      = now.getFullYear()
   const start     = new Date(year, 0, 1)
@@ -17,11 +20,23 @@ export default function YearKPI() {
   const daysLeft  = total - dayOfYear
   const pctLeft   = (daysLeft / total) * 100
   const pctFilled = (dayOfYear / total) * 100
+  const color     = statusColor(pctLeft)
 
-  const color = statusColor(pctLeft)
+  function onMouseMove(e) {
+    const el = ref.current
+    const r  = el.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width
+    const py = (e.clientY - r.top)  / r.height
+    el.style.setProperty('--rx', `${((px - 0.5) * 7).toFixed(2)}deg`)
+    el.style.setProperty('--ry', `${(-(py - 0.5) * 7).toFixed(2)}deg`)
+  }
+  function onMouseLeave() {
+    ref.current.style.setProperty('--rx', '0deg')
+    ref.current.style.setProperty('--ry', '0deg')
+  }
 
   return (
-    <div className="ykpi-card">
+    <div className="ykpi-card" ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="ykpi-stat ykpi-stat--left">
         <span className="ykpi-num" style={{ color }}>{daysLeft}</span>
         <span className="ykpi-unit">days remaining</span>
