@@ -110,11 +110,26 @@ router.get('/:kpiId', async (req, res) => {
     }
 
     if ((noFreshUntil.get(kpiId) || 0) <= Date.now()) {
-      const response = await fetch(kpi.api_url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      });
-      if (!response.ok) return res.status(502).json({ error: `Feed returned ${response.status}` });
-      const articles = parseFeed(await response.text(), kpi.name);
+      const feeds = db.prepare('SELECT * FROM tbl_news_feeds WHERE news_kpi_id = ? AND live = 1').all(kpiId);
+      const feedList = feeds.length > 0 ? feeds : [{ url: kpi.api_url, name: kpi.name }];
+
+      const fetchResults = await Promise.allSettled(
+        feedList.map(feed =>
+          fetch(feed.url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } })
+            .then(r => { if (!r.ok) throw new Error(`${feed.name} returned ${r.status}`); return r.text(); })
+            .then(xml => parseFeed(xml, feed.name))
+        )
+      );
+
+      if (fetchResults.every(r => r.status === 'rejected')) {
+        return res.status(502).json({ error: 'All news feeds failed to respond' });
+      }
+
+      const seen = new Set();
+      const articles = fetchResults
+        .filter(r => r.status === 'fulfilled')
+        .flatMap(r => r.value)
+        .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true; });
 
       // "Fresh" = never appeared in this feed before. Any article already in the DB
       // has been seen (markLive inserts it the moment it hits the screen).

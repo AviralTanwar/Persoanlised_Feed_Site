@@ -374,6 +374,27 @@ if (onCount === 0) {
     '## 2026 Reading List\n\n✅ The Pragmatic Programmer\n✅ Clean Code - R.C. Martin\n✅ The Phoenix Project\n📖 Designing Data-Intensive Applications (ch.7 / 12)\n⏳ Staff Engineer - Will Larson\n⏳ A Philosophy of Software Design\n\n### Notes\n- DDIA chapter 7 covers transactions and isolation levels\n- Read chapter 9 before starting distributed systems work\n- Staff Engineer is short - can finish in a weekend');
 }
 
+// Multi-feed table: multiple RSS sources per news KPI
+db.exec(`CREATE TABLE IF NOT EXISTS tbl_news_feeds (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  news_kpi_id INTEGER NOT NULL REFERENCES tbl_news_kpi_data(id),
+  url         TEXT    NOT NULL,
+  name        TEXT    NOT NULL,
+  live        INTEGER NOT NULL DEFAULT 1 CHECK(live IN (0, 1)),
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Seed Indian national news feeds (idempotent per KPI)
+const { n: natFeedCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_feeds WHERE news_kpi_id = 1').get();
+if (natFeedCount === 0) {
+  const insF = db.prepare('INSERT INTO tbl_news_feeds (news_kpi_id, url, name) VALUES (?, ?, ?)');
+  insF.run(1, 'https://feeds.feedburner.com/ndtvnews-india-news',         'NDTV');
+  insF.run(1, 'https://www.thehindu.com/news/national/feeder/default.rss', 'The Hindu');
+  insF.run(1, 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms','Times of India');
+  insF.run(1, 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml', 'Hindustan Times');
+  insF.run(1, 'https://www.indiatoday.in/rss/1206550',                    'India Today');
+}
+
 // Seed YouTube videos into tbl_notes (migrate from static/youtube_videos.json, idempotent per URL)
 {
   const ytView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='youtube' AND deleted_at='0000-00-00 00:00:00'").get();
