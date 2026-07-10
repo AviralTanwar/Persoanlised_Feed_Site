@@ -66,20 +66,20 @@ router.get('/:notesId/data', (req, res) => {
 });
 
 router.post('/:notesId/data', (req, res) => {
-  const { title='', content } = req.body;
+  const { title='', description='', content='' } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'content required' });
   const info = db.prepare(
-    'INSERT INTO tbl_notes_data (entity_id, title, content) VALUES (?,?,?)'
-  ).run(Number(req.params.notesId), title, content.trim());
+    'INSERT INTO tbl_notes_data (entity_id, title, description, content) VALUES (?,?,?,?)'
+  ).run(Number(req.params.notesId), title, description, content.trim());
   res.json(db.prepare('SELECT * FROM tbl_notes_data WHERE id=?').get(info.lastInsertRowid));
 });
 
 router.patch('/data/:id', (req, res) => {
-  const { title, content } = req.body;
+  const { title, description, content } = req.body;
   db.prepare(`UPDATE tbl_notes_data SET
-    title=COALESCE(?,title), content=COALESCE(?,content),
+    title=COALESCE(?,title), description=COALESCE(?,description), content=COALESCE(?,content),
     updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-    .run(title??null, content??null, Number(req.params.id));
+    .run(title??null, description??null, content??null, Number(req.params.id));
   res.json(db.prepare('SELECT * FROM tbl_notes_data WHERE id=?').get(Number(req.params.id)));
 });
 

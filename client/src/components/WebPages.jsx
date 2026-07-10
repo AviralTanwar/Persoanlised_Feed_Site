@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Card from './shared/Card'
 import SectionHeader from './shared/SectionHeader'
 import RichEditor from './shared/RichEditor'
@@ -12,31 +12,32 @@ function fmtDate(dt) {
   return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const SORT_OPTS = [
-  { key: 'updated_at:desc', label: 'Recent' },
-  { key: 'created_at:asc',  label: 'Oldest' },
-  { key: 'title:asc',       label: 'A→Z'    },
-  { key: 'title:desc',      label: 'Z→A'    },
-]
-
-export default function WebPages({ viewKpi = {} }) {
-  const viewId    = viewKpi.id   || 1
+export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }) {
+  const viewId    = viewKpi.id   ?? null
   const viewTitle = viewKpi.name || 'Web Pages'
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded,      setExpanded]      = useState(false)
+  const [miniCollapsed, setMiniCollapsed] = useState(() => localStorage.getItem('wp_mini_collapsed') === 'true')
 
-  const [pages, setPages]           = useState([])
+  const [pages,      setPages]      = useState([])
   const [activePage, setActivePage] = useState(null)
-  const [notes, setNotes]           = useState([])
-  const [user, setUser]             = useState(null)
+  const [notes,      setNotes]      = useState([])
+  const [user,       setUser]       = useState(null)
 
   const [leftOpen,   setLeftOpen]   = useState(true)
   const [leftWidth,  setLeftWidth]  = useState(() => parseInt(localStorage.getItem('wp_left_w')  || '240', 10))
   const [rightOpen,  setRightOpen]  = useState(true)
   const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('wp_right_w') || '300', 10))
 
-  const [sortOpt,    setSortOpt]    = useState('updated_at:desc')
-  const [filterText, setFilterText] = useState('')
+  const sidebarLeftRef  = useRef(null)
+  const sidebarRightRef = useRef(null)
+
+  const [sortField, setSortFieldRaw] = useState(() => localStorage.getItem('wp_sort_field') || 'updated_at')
+  const [sortDir,   setSortDirRaw]   = useState(() => localStorage.getItem('wp_sort_dir')   || 'desc')
+  const [filterText, setFilterText]  = useState('')
+
+  function setSortField(v) { setSortFieldRaw(v); localStorage.setItem('wp_sort_field', v) }
+  function setSortDir(v)   { setSortDirRaw(v);   localStorage.setItem('wp_sort_dir',   v) }
 
   const [addingPage,    setAddingPage]    = useState(false)
   const [newPage,       setNewPage]       = useState({ title: '', url: '', description: '' })
@@ -44,9 +45,9 @@ export default function WebPages({ viewKpi = {} }) {
   const [editPageDraft, setEditPageDraft] = useState({ title: '', description: '' })
 
   const [addingNote,    setAddingNote]    = useState(false)
-  const [noteDraft,     setNoteDraft]     = useState({ title: '', content: '' })
+  const [noteDraft,     setNoteDraft]     = useState({ title: '', description: '', content: '' })
   const [editingNote,   setEditingNote]   = useState(null)
-  const [editNoteDraft, setEditNoteDraft] = useState({ title: '', content: '' })
+  const [editNoteDraft, setEditNoteDraft] = useState({ title: '', description: '', content: '' })
 
   useEffect(() => {
     fetch('/api/user-info').then(r => r.json()).then(setUser).catch(() => {})
@@ -72,26 +73,49 @@ export default function WebPages({ viewKpi = {} }) {
     return () => window.removeEventListener('keydown', fn)
   }, [expanded])
 
+  // Direct DOM resize — no React re-renders during drag, no CSS transition stutter
   function onLeftResizeStart(e) {
     e.preventDefault()
-    const startX = e.clientX, startW = leftWidth
+    const el = sidebarLeftRef.current
+    if (el) el.classList.add('resizing')
+    const startX = e.clientX
+    const startW = leftWidth
+    let curW = startW
     const onMove = ev => {
-      const w = Math.min(400, Math.max(160, startW + ev.clientX - startX))
-      setLeftWidth(w); localStorage.setItem('wp_left_w', String(w))
+      curW = Math.min(400, Math.max(160, startW + ev.clientX - startX))
+      if (el) el.style.width = curW + 'px'
     }
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
-    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+    const onUp = () => {
+      if (el) el.classList.remove('resizing')
+      setLeftWidth(curW)
+      localStorage.setItem('wp_left_w', String(curW))
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   }
 
   function onRightResizeStart(e) {
     e.preventDefault()
-    const startX = e.clientX, startW = rightWidth
+    const el = sidebarRightRef.current
+    if (el) el.classList.add('resizing')
+    const startX = e.clientX
+    const startW = rightWidth
+    let curW = startW
     const onMove = ev => {
-      const w = Math.min(480, Math.max(200, startW + startX - ev.clientX))
-      setRightWidth(w); localStorage.setItem('wp_right_w', String(w))
+      curW = Math.min(480, Math.max(200, startW + startX - ev.clientX))
+      if (el) el.style.width = curW + 'px'
     }
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
-    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+    const onUp = () => {
+      if (el) el.classList.remove('resizing')
+      setRightWidth(curW)
+      localStorage.setItem('wp_right_w', String(curW))
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
   }
 
   async function createPage(e) {
@@ -127,19 +151,20 @@ export default function WebPages({ viewKpi = {} }) {
 
   async function createNote(e) {
     e.preventDefault()
+    if (!noteDraft.title.trim()) return
     if (isEmptyHtml(noteDraft.content) || !activePage) return
     if (notes.length >= MAX_NOTES) { alert(`Max ${MAX_NOTES} notes per page`); return }
     const n = await fetch(`/api/notes/${activePage.id}/data`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: noteDraft.title.trim(), content: noteDraft.content }),
+      body: JSON.stringify({ title: noteDraft.title.trim(), description: noteDraft.description.trim(), content: noteDraft.content }),
     }).then(r => r.json())
-    setNotes(ns => [...ns, n]); setNoteDraft({ title: '', content: '' }); setAddingNote(false)
+    setNotes(ns => [...ns, n]); setNoteDraft({ title: '', description: '', content: '' }); setAddingNote(false)
   }
 
   async function updateNote() {
     const updated = await fetch(`/api/notes/data/${editingNote.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: editNoteDraft.title, content: editNoteDraft.content }),
+      body: JSON.stringify({ title: editNoteDraft.title, description: editNoteDraft.description, content: editNoteDraft.content }),
     }).then(r => r.json())
     setNotes(ns => ns.map(n => n.id === updated.id ? updated : n))
     setEditingNote(null)
@@ -150,15 +175,38 @@ export default function WebPages({ viewKpi = {} }) {
     setNotes(ns => ns.filter(n => n.id !== id))
   }
 
-  const [_sf, _sd] = sortOpt.split(':')
+  function toggleMiniCollapsed(val) {
+    setMiniCollapsed(val)
+    localStorage.setItem('wp_mini_collapsed', String(val))
+  }
+
   const visiblePages = [...pages]
     .filter(p => !filterText || p.title.toLowerCase().includes(filterText.toLowerCase()) || (p.description || '').toLowerCase().includes(filterText.toLowerCase()))
     .sort((a, b) => {
-      const va = (a[_sf] || '').toLowerCase()
-      const vb = (b[_sf] || '').toLowerCase()
+      const va = (a[sortField] || '').toLowerCase()
+      const vb = (b[sortField] || '').toLowerCase()
       const cmp = va < vb ? -1 : va > vb ? 1 : 0
-      return _sd === 'asc' ? cmp : -cmp
+      return sortDir === 'asc' ? cmp : -cmp
     })
+
+  // ── Slim strip (mini card hidden) ──────────────────────────────────────────
+  if (!expanded && miniCollapsed) {
+    return (
+      <Card className="wp-mini-card wp-mini-card--slim">
+        <div className="wp-mini-slim">
+          <div className="wp-mini-slim-left">
+            <span className="wp-mini-slim-icon">🌐</span>
+            <span className="wp-mini-slim-title">{viewTitle}</span>
+            <span className="wp-mini-slim-badge">{pages.length}</span>
+          </div>
+          <div className="wp-mini-slim-right">
+            <button className="wp-tb-btn" onClick={() => toggleMiniCollapsed(false)}>▶ Show</button>
+            <button className="wp-expand-btn" onClick={() => setExpanded(true)}>⤢ Launch</button>
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   // ── Mini card ──────────────────────────────────────────────────────────────
   if (!expanded) {
@@ -166,7 +214,10 @@ export default function WebPages({ viewKpi = {} }) {
       <Card className="wp-mini-card">
         <div className="wp-mini-header">
           <SectionHeader icon="🌐" title={viewTitle} />
-          <button className="wp-expand-btn" onClick={() => setExpanded(true)}>⤢ Launch</button>
+          <div className="wp-mini-header-right">
+            <button className="wp-tb-btn" style={{ fontSize: 11, padding: '4px 9px' }} onClick={() => toggleMiniCollapsed(true)}>◀ Hide</button>
+            <button className="wp-expand-btn" onClick={() => setExpanded(true)}>⤢ Launch</button>
+          </div>
         </div>
         <div className="wp-mini-body">
           <div className="wp-mini-stat">
@@ -185,7 +236,7 @@ export default function WebPages({ viewKpi = {} }) {
               ))}
             </div>
           ) : (
-            <p className="wp-mini-empty">No pages yet - launch to add one.</p>
+            <p className="wp-mini-empty">No pages yet — launch to add one.</p>
           )}
         </div>
       </Card>
@@ -212,6 +263,12 @@ export default function WebPages({ viewKpi = {} }) {
           <button className={`wp-tb-btn${rightOpen ? ' on' : ''}`} onClick={() => setRightOpen(o => !o)}>
             📝 Notes
           </button>
+          {onThemeToggle && (
+            <button className="wp-tb-btn wp-tb-theme" onClick={onThemeToggle}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          )}
           <button className="wp-tb-minimize" onClick={() => setExpanded(false)} title="Minimize (Esc)">
             ⊟ Minimize
           </button>
@@ -222,7 +279,9 @@ export default function WebPages({ viewKpi = {} }) {
       <div className="wp-body">
 
         {/* ── Left sidebar ── */}
-        <aside className={`wp-left${leftOpen ? '' : ' hidden'}`}
+        <aside
+          ref={sidebarLeftRef}
+          className={`wp-left${leftOpen ? '' : ' hidden'}`}
           style={leftOpen ? { width: leftWidth, minWidth: leftWidth } : {}}>
 
           <div className="wp-left-controls">
@@ -232,14 +291,17 @@ export default function WebPages({ viewKpi = {} }) {
               value={filterText}
               onChange={e => setFilterText(e.target.value)}
             />
-            <div className="wp-sort-row">
-              {SORT_OPTS.map(o => (
-                <button key={o.key}
-                  className={`wp-sort-btn${sortOpt === o.key ? ' on' : ''}`}
-                  onClick={() => setSortOpt(o.key)}>
-                  {o.label}
-                </button>
-              ))}
+            <div className="wp-sort-bar">
+              <select className="wp-sort-select" value={sortField}
+                onChange={e => setSortField(e.target.value)}>
+                <option value="updated_at">Updated</option>
+                <option value="created_at">Created</option>
+                <option value="title">Name</option>
+              </select>
+              <button className="wp-sort-dir"
+                onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}>
+                {sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
             </div>
           </div>
 
@@ -321,6 +383,7 @@ export default function WebPages({ viewKpi = {} }) {
               </div>
               <div className="wp-iframe-wrap">
                 <iframe
+                  key={activePage.id}
                   src={activePage.url}
                   title={activePage.title}
                   className="wp-iframe"
@@ -334,7 +397,9 @@ export default function WebPages({ viewKpi = {} }) {
         {rightOpen && <div className="wp-resize-handle" onMouseDown={onRightResizeStart} />}
 
         {/* ── Right sidebar (notes) ── */}
-        <aside className={`wp-right${rightOpen ? '' : ' hidden'}`}
+        <aside
+          ref={sidebarRightRef}
+          className={`wp-right${rightOpen ? '' : ' hidden'}`}
           style={rightOpen ? { width: rightWidth, minWidth: rightWidth } : {}}>
 
           <div className="wp-right-header">
@@ -344,7 +409,7 @@ export default function WebPages({ viewKpi = {} }) {
             {activePage && notes.length < MAX_NOTES && !addingNote && (
               <button className="wp-btn-secondary"
                 style={{ fontSize: 10, padding: '3px 8px' }}
-                onClick={() => { setAddingNote(true); setNoteDraft({ title: '', content: '' }) }}>
+                onClick={() => { setAddingNote(true); setNoteDraft({ title: '', description: '', content: '' }) }}>
                 + Add
               </button>
             )}
@@ -361,12 +426,14 @@ export default function WebPages({ viewKpi = {} }) {
 
             {activePage && addingNote && (
               <form className="wp-note-form" onSubmit={createNote}>
-                <input className="wp-input" placeholder="Note title (optional)"
+                <input className="wp-input" placeholder="Note title *" autoFocus
                   value={noteDraft.title} onChange={e => setNoteDraft(d => ({ ...d, title: e.target.value }))} />
+                <input className="wp-input" placeholder="Short description (optional)"
+                  value={noteDraft.description} onChange={e => setNoteDraft(d => ({ ...d, description: e.target.value }))} />
                 <RichEditor
                   content={noteDraft.content}
                   onChange={html => setNoteDraft(d => ({ ...d, content: html }))}
-                  placeholder="Write your note…"
+                  placeholder="Note content…"
                 />
                 <div className="wp-btn-row" style={{ marginTop: 6 }}>
                   <button className="wp-btn-primary" type="submit">Save</button>
@@ -379,12 +446,16 @@ export default function WebPages({ viewKpi = {} }) {
               <div key={n.id} className="wp-note-card">
                 {editingNote?.id === n.id ? (
                   <div className="wp-note-edit">
-                    <input className="wp-input" value={editNoteDraft.title}
+                    <input className="wp-input" placeholder="Note title *"
+                      value={editNoteDraft.title}
                       onChange={e => setEditNoteDraft(d => ({ ...d, title: e.target.value }))} />
+                    <input className="wp-input" placeholder="Short description (optional)"
+                      value={editNoteDraft.description}
+                      onChange={e => setEditNoteDraft(d => ({ ...d, description: e.target.value }))} />
                     <RichEditor
                       content={editNoteDraft.content}
                       onChange={html => setEditNoteDraft(d => ({ ...d, content: html }))}
-                      placeholder="Edit note…"
+                      placeholder="Edit note content…"
                     />
                     <div className="wp-btn-row" style={{ marginTop: 6 }}>
                       <button className="wp-btn-primary" style={{ fontSize: 11 }} onClick={updateNote}>Save</button>
@@ -394,12 +465,13 @@ export default function WebPages({ viewKpi = {} }) {
                 ) : (
                   <>
                     {n.title && <div className="wp-note-title">{n.title}</div>}
+                    {n.description && <div className="wp-note-desc-display">{n.description}</div>}
                     <div className="wp-note-content rich-display" dangerouslySetInnerHTML={{ __html: n.content }} />
                     <div className="wp-note-meta">
                       <span>{fmtDate(n.created_at)}</span>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button className="wp-btn-secondary" style={{ fontSize: 10, padding: '2px 6px' }}
-                          onClick={() => { setEditingNote(n); setEditNoteDraft({ title: n.title || '', content: n.content }) }}>✏️</button>
+                          onClick={() => { setEditingNote(n); setEditNoteDraft({ title: n.title || '', description: n.description || '', content: n.content }) }}>✏️</button>
                         <button className="wp-btn-danger" style={{ fontSize: 10, padding: '2px 6px' }}
                           onClick={() => deleteNote(n.id)}>🗑</button>
                       </div>
@@ -432,9 +504,10 @@ function WpGreeting({ user, pages }) {
         <div className="wpt-line cmd">$ ./webpages --help</div>
         <div className="wpt-block">
           <div className="wpt-row"><span className="wpt-k">☰ Pages (left)</span><span className="wpt-v">browse, filter, sort &amp; add pages</span></div>
-          <div className="wpt-row"><span className="wpt-k">✏ pencil</span><span className="wpt-v">edit title or description - URL is locked 🔒</span></div>
-          <div className="wpt-row"><span className="wpt-k">📝 Notes (right)</span><span className="wpt-v">rich notes per page - headings, lists, code</span></div>
+          <div className="wpt-row"><span className="wpt-k">✏ pencil</span><span className="wpt-v">edit title or description — URL is locked 🔒</span></div>
+          <div className="wpt-row"><span className="wpt-k">📝 Notes (right)</span><span className="wpt-v">rich notes per page — headings, lists, code</span></div>
           <div className="wpt-row"><span className="wpt-k">↗ New tab</span><span className="wpt-v">open page externally if iframe blocks it</span></div>
+          <div className="wpt-row"><span className="wpt-k">☀️ / 🌙</span><span className="wpt-v">toggle light / dark theme from the topbar</span></div>
           <div className="wpt-row"><span className="wpt-k">Esc / ⊟</span><span className="wpt-v">minimize back to dashboard</span></div>
         </div>
         <div className="wpt-line cmd dim">$ █</div>

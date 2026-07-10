@@ -1,30 +1,36 @@
 import useTime from '../../hooks/useTime'
 import './SideNav.css'
 
-const NAV_ITEMS = [
-  { id: 'weather',      icon: '🌤️', label: 'Weather' },
-  { id: 'news',         icon: '📰', label: 'National News' },
-  { id: 'tech',         icon: '💻', label: 'Tech News' },
-  { id: 'todo',         icon: '✅', label: 'To-Do' },
-  { id: 'webpages',     icon: '🌐', label: 'Web Pages' },
-  { id: 'youtube',      icon: '🎬', label: 'YouTube' },
-  { id: 'notes',        icon: '📓', label: 'OneNote' },
-  { id: 'improvements', icon: '💡', label: 'Improvements' },
-]
+// Maps section_key → nav entry. An array means the section produces multiple nav items (e.g. news has two panels).
+const SECTION_META = {
+  weather:      { icon: '🌤️', scrollId: 'weather' },
+  news:         [
+    { icon: '📰', scrollId: 'news', label: 'National News' },
+    { icon: '💻', scrollId: 'tech', label: 'Tech News' },
+  ],
+  todo:         { icon: '✅', scrollId: 'todo' },
+  web_pages:    { icon: '🌐', scrollId: 'webpages' },
+  youtube:      { icon: '🎬', scrollId: 'youtube' },
+  improvements: { icon: '💡', scrollId: 'improvements' },
+  onenote:      { icon: '📓', scrollId: 'notes' },
+}
 
-export default function SideNav({ active, onNav, open, onToggle, clock, theme, onThemeToggle }) {
+export default function SideNav({ active, onNav, open, onToggle, clock, theme, onThemeToggle, viewKpis = [] }) {
   const now = useTime()
 
   const timeStr = now.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
     hour12: clock === '12h',
   })
   const dateStr = now.toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
+    weekday: 'short', day: 'numeric', month: 'short',
+  })
+
+  const navItems = viewKpis.flatMap(kpi => {
+    const meta = SECTION_META[kpi.section_key]
+    if (!meta) return []
+    if (Array.isArray(meta)) return meta.map(m => ({ ...m }))
+    return [{ ...meta, label: kpi.name }]
   })
 
   return (
@@ -59,11 +65,11 @@ export default function SideNav({ active, onNav, open, onToggle, clock, theme, o
         </div>
 
         <div className="nav-list">
-          {NAV_ITEMS.map(n => (
+          {navItems.map(n => (
             <button
-              key={n.id}
-              className={`nav-item${active === n.id ? ' on' : ''}`}
-              onClick={() => onNav(n.id)}
+              key={n.scrollId}
+              className={`nav-item${active === n.scrollId ? ' on' : ''}`}
+              onClick={() => onNav(n.scrollId)}
             >
               <span className="nav-ico">{n.icon}</span>
               <span>{n.label}</span>

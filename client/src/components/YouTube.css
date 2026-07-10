@@ -4,7 +4,28 @@
   gap: 12px;
 }
 
-.yt-sidebar { display: flex; flex-direction: column; gap: 6px; }
+.yt-sidebar { display: flex; flex-direction: column; gap: 4px; }
+
+.yt-item-wrap { display: flex; align-items: center; gap: 3px; }
+.yt-del { display: none; flex-shrink: 0; }
+.yt-item-wrap:hover .yt-del { display: block; }
+
+.yt-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mantle);
+  border: 1px solid var(--s1);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 4px;
+}
+.yt-add-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  align-self: flex-start;
+  margin-top: 4px;
+}
 
 .yt-item {
   background: transparent;

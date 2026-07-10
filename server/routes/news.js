@@ -86,6 +86,13 @@ router.get('/:kpiId', async (req, res) => {
 
   const count = Math.min(Number(req.query.count) || 20, 38);
 
+  // Reset stale live=1 flags for unreacted articles — if the tab was closed or crashed,
+  // those flags never got cleared and would permanently block the article pool.
+  db.prepare(`
+    UPDATE tbl_news_data SET live = 0, updated_at = CURRENT_TIMESTAMP
+    WHERE news_api_id = ? AND live = 1 AND response = 0 AND deleted_at IS NULL
+  `).run(kpiId);
+
   try {
     const cached = cacheByKpi.get(kpiId);
     if (cached && cached.expiresAt > Date.now()) {
@@ -99,14 +106,12 @@ router.get('/:kpiId', async (req, res) => {
       if (!response.ok) return res.status(502).json({ error: `Feed returned ${response.status}` });
       const articles = parseFeed(await response.text());
 
-      // Only exclude articles you have explicitly reacted to (liked/disliked/skipped)
-      // or that are currently rendered on screen (live=1). Articles you were merely
-      // shown but ignored cycle back freely - prevents the exclusion set from growing
-      // without bound and strangling the feed pool over time.
+      // Only exclude articles the user has explicitly reacted to (liked/disliked/skipped).
+      // live=1 is no longer used for exclusion — stale flags are cleared above on each request.
       const excluded = new Set(
         db.prepare(`
           SELECT link FROM tbl_news_data
-          WHERE news_api_id = ? AND deleted_at IS NULL AND (response != 0 OR live = 1)
+          WHERE news_api_id = ? AND deleted_at IS NULL AND response != 0
         `).all(kpiId).map(r => r.link)
       );
       const fresh = articles.filter(a => !excluded.has(a.id));

@@ -5,7 +5,6 @@ import RichEditor from './shared/RichEditor'
 import './YouTube.css'
 
 const isEmptyHtml = h => !h || h.replace(/<[^>]*>/g, '').trim() === ''
-
 const MAX_NOTES = 5
 
 function fmtDate(dt) {
@@ -13,57 +12,67 @@ function fmtDate(dt) {
   return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function parseEmbedUrl(raw) {
+  try {
+    const u = new URL(raw.trim())
+    if (u.hostname.includes('youtu.be')) return `https://www.youtube.com/embed/${u.pathname.slice(1)}`
+    if (u.hostname.includes('youtube.com')) {
+      if (u.pathname.startsWith('/embed/')) return raw.trim()
+      const v = u.searchParams.get('v')
+      if (v) return `https://www.youtube.com/embed/${v}`
+    }
+  } catch {}
+  return null
+}
+
 export default function YouTube({ viewKpi = {} }) {
-  const viewId    = viewKpi.id   || 2
+  const viewId    = viewKpi.id   ?? null
   const viewTitle = viewKpi.name || 'YouTube Viewer'
 
-  const [videos, setVideos]   = useState([])
-  const [idx, setIdx]         = useState(0)
+  const [videos, setVideos] = useState([])
+  const [idx, setIdx]       = useState(0)
   const [showNotes, setShowNotes] = useState(false)
 
-  const [noteEntity, setNoteEntity] = useState(null)
   const [notes, setNotes]           = useState([])
   const [addingNote, setAddingNote] = useState(false)
   const [noteDraft, setNoteDraft]   = useState({ title: '', content: '' })
   const [editingNote, setEditingNote]     = useState(null)
   const [editNoteDraft, setEditNoteDraft] = useState({ title: '', content: '' })
 
-  useEffect(() => {
-    fetch('/api/static/youtube').then(r => r.json()).then(setVideos)
-  }, [])
+  const [addingVideo, setAddingVideo] = useState(false)
+  const [videoDraft, setVideoDraft]   = useState({ url: '', title: '', channel: '' })
+  const [videoErr, setVideoErr]       = useState('')
+
+  function loadVideos() {
+    fetch('/api/notes?entityType=youtube')
+      .then(r => r.json())
+      .then(rows => {
+        if (Array.isArray(rows)) {
+          const active = rows.filter(r => r.deleted_at === '0000-00-00 00:00:00')
+          setVideos(active)
+          setIdx(i => Math.min(i, Math.max(0, active.length - 1)))
+        }
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => { loadVideos() }, [])
 
   const vid = videos[idx]
 
-  // When active video changes: find or create its tbl_notes entity, then load entries
   useEffect(() => {
-    if (!vid) { setNoteEntity(null); setNotes([]); return }
-    const url = vid.url
-    fetch(`/api/notes?entityType=youtube&entityId=${encodeURIComponent(url)}`)
+    if (!vid) { setNotes([]); return }
+    fetch(`/api/notes/${vid.id}/data`)
       .then(r => r.json())
-      .then(async rows => {
-        let entity = Array.isArray(rows) && rows[0]
-        if (!entity) {
-          entity = await fetch('/api/notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              entity_type: 'youtube', entity_id: url,
-              view_id: viewId, title: vid.title, url,
-            }),
-          }).then(r => r.json())
-        }
-        setNoteEntity(entity)
-        const data = await fetch(`/api/notes/${entity.id}/data`).then(r => r.json())
-        setNotes(Array.isArray(data) ? data.filter(n => n.deleted_at === '0000-00-00 00:00:00') : [])
-      })
-      .catch(() => { setNoteEntity(null); setNotes([]) })
-  }, [vid?.url, viewId])
+      .then(rows => setNotes(Array.isArray(rows) ? rows.filter(n => n.deleted_at === '0000-00-00 00:00:00') : []))
+      .catch(() => setNotes([]))
+  }, [vid?.id])
 
   async function createNote(e) {
     e.preventDefault()
-    if (isEmptyHtml(noteDraft.content) || !noteEntity) return
+    if (isEmptyHtml(noteDraft.content) || !vid) return
     if (notes.length >= MAX_NOTES) { alert(`Max ${MAX_NOTES} notes per video`); return }
-    const n = await fetch(`/api/notes/${noteEntity.id}/data`, {
+    const n = await fetch(`/api/notes/${vid.id}/data`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: noteDraft.title.trim(), content: noteDraft.content.trim() }),
@@ -88,6 +97,33 @@ export default function YouTube({ viewKpi = {} }) {
     setNotes(ns => ns.filter(n => n.id !== id))
   }
 
+  async function addVideo(e) {
+    e.preventDefault()
+    setVideoErr('')
+    if (!videoDraft.title.trim()) { setVideoErr('Title is required'); return }
+    const embedUrl = parseEmbedUrl(videoDraft.url)
+    if (!embedUrl) { setVideoErr('Invalid YouTube URL (paste a watch, share, or embed URL)'); return }
+    if (!viewId) { setVideoErr('View not ready — try again in a moment'); return }
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entity_type: 'youtube', entity_id: embedUrl, view_id: viewId,
+        title: videoDraft.title.trim(), description: videoDraft.channel.trim(), url: embedUrl,
+      }),
+    })
+    if (!res.ok) { const d = await res.json(); setVideoErr(d.error || 'Failed to add'); return }
+    setVideoDraft({ url: '', title: '', channel: '' })
+    setAddingVideo(false)
+    loadVideos()
+  }
+
+  async function deleteVideo(id) {
+    if (!confirm('Remove this video from your list? Notes on it will be kept.')) return
+    await fetch(`/api/notes/${id}`, { method: 'DELETE' })
+    loadVideos()
+  }
+
   return (
     <Card>
       <SectionHeader
@@ -102,21 +138,43 @@ export default function YouTube({ viewKpi = {} }) {
       <div className="yt-layout">
         <div className="yt-sidebar">
           {videos.map((v, i) => (
-            <button key={i} className={`yt-item${idx === i ? ' on' : ''}`} onClick={() => setIdx(i)}>
-              <span className="yt-play">▶</span>
-              <div>
-                <div className="yt-title">{v.title}</div>
-                <div className="yt-ch">{v.channel}</div>
-              </div>
-            </button>
+            <div key={v.id} className={`yt-item-wrap${idx === i ? ' on' : ''}`}>
+              <button className={`yt-item${idx === i ? ' on' : ''}`} onClick={() => { setIdx(i); setShowNotes(false) }}>
+                <span className="yt-play">▶</span>
+                <div>
+                  <div className="yt-title">{v.title}</div>
+                  <div className="yt-ch">{v.description}</div>
+                </div>
+              </button>
+              <button className="btn-i danger yt-del" title="Remove video" onClick={() => deleteVideo(v.id)}>🗑️</button>
+            </div>
           ))}
+
+          {addingVideo ? (
+            <form className="yt-add-form" onSubmit={addVideo}>
+              <input className="fld" placeholder="YouTube URL *" autoFocus
+                value={videoDraft.url} onChange={e => setVideoDraft(d => ({ ...d, url: e.target.value }))} />
+              <input className="fld" placeholder="Title *"
+                value={videoDraft.title} onChange={e => setVideoDraft(d => ({ ...d, title: e.target.value }))} />
+              <input className="fld" placeholder="Channel (optional)"
+                value={videoDraft.channel} onChange={e => setVideoDraft(d => ({ ...d, channel: e.target.value }))} />
+              {videoErr && <span style={{ color: 'var(--red)', fontSize: 11 }}>⚠️ {videoErr}</span>}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="btn-p" type="submit" style={{ fontSize: 11, padding: '4px 12px' }}>Add</button>
+                <button className="btn-g" type="button" style={{ fontSize: 11, padding: '4px 12px' }}
+                  onClick={() => { setAddingVideo(false); setVideoErr('') }}>Cancel</button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn-g yt-add-btn" onClick={() => setAddingVideo(true)}>+ Add video</button>
+          )}
         </div>
 
         <div className="yt-main">
           {vid && (
             <div className="yt-player">
               <iframe
-                src={`${vid.url}?rel=0&modestbranding=1`}
+                src={`${vid.entity_id}?rel=0&modestbranding=1`}
                 title={vid.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -124,10 +182,10 @@ export default function YouTube({ viewKpi = {} }) {
             </div>
           )}
 
-          {showNotes && (
+          {showNotes && vid && (
             <div className="yt-notes">
               <div className="yt-notes-hdr">
-                <span>Notes - {vid?.title}</span>
+                <span>Notes — {vid.title}</span>
                 {notes.length < MAX_NOTES && !addingNote && (
                   <button className="btn-g" style={{ fontSize: 11 }}
                     onClick={() => { setAddingNote(true); setNoteDraft({ title: '', content: '' }) }}>

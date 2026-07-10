@@ -1,10 +1,18 @@
-import { useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useTime from '../hooks/useTime'
 import './Hero.css'
 
 export default function Hero({ clock }) {
   const ref = useRef()
   const now = useTime()
+  const [userInfo, setUserInfo] = useState({ location: 'Noida, India', timezone: 'IST (UTC+5:30)' })
+
+  useEffect(() => {
+    fetch('/api/user-info')
+      .then(r => r.json())
+      .then(d => { if (d && !d.error) setUserInfo(d) })
+      .catch(() => {})
+  }, [])
 
   const hr = now.getHours()
   const greeting =
@@ -45,7 +53,9 @@ export default function Hero({ clock }) {
         {weekday},<br />{rest}
       </div>
       <div className="hero-time">{timeStr}</div>
-      <div className="hero-sub">Noida, India · IST (UTC+5:30)</div>
+      <div className="hero-sub">
+        {userInfo.location || 'Noida, India'} · {userInfo.timezone || 'IST (UTC+5:30)'}
+      </div>
     </div>
   )
 }

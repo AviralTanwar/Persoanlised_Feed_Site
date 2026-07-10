@@ -5,8 +5,6 @@ import Chip from './shared/Chip'
 import useCountUp from '../hooks/useCountUp'
 import './Weather.css'
 
-const MAX_CITIES = 6
-
 // Built entirely from theme tokens (see THEME_COLORS.md) - named accents shift
 // between Mocha/Latte palettes so each tile stays legible whichever theme is active.
 const COND = {
@@ -26,18 +24,6 @@ const ICONS = {
   Snow: '❄️', Thunderstorm: '⛈️', Haze: '🌫️', Mist: '🌁', Smoke: '🌫️',
 }
 
-const EXTRA_CITIES = [
-  { city: 'New Delhi',  country: 'IN' },
-  { city: 'Gurugram',   country: 'IN' },
-  { city: 'Bengaluru',  country: 'IN' },
-  { city: 'Mumbai',     country: 'IN' },
-  { city: 'Lucknow',    country: 'IN' },
-  { city: 'Jaipur',     country: 'IN' },
-  { city: 'Pune',       country: 'IN' },
-  { city: 'Chandigarh', country: 'IN' },
-  { city: 'Hyderabad',  country: 'IN' },
-  { city: 'Kolkata',    country: 'IN' },
-]
 
 function WeatherTile({ city, country, removable, onRemove }) {
   const [data, setData]       = useState(null)
@@ -121,7 +107,9 @@ function WeatherTile({ city, country, removable, onRemove }) {
 }
 
 export default function Weather() {
-  const [cities, setCities]   = useState([])
+  const [cities,      setCities]      = useState([])
+  const [maxCities,   setMaxCities]   = useState(6)
+  const [suggestions, setSuggestions] = useState([])
   const [picking, setPicking] = useState(false)
   const [adding, setAdding]   = useState(false)
   const [error, setError]     = useState(null)
@@ -129,14 +117,22 @@ export default function Weather() {
   function load() {
     fetch('/api/weather-cities')
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setCities(data) })
+      .then(data => {
+        if (data && data.cities) {
+          setCities(data.cities)
+          setMaxCities(data.max ?? 6)
+          setSuggestions(data.suggestions ?? [])
+        } else if (Array.isArray(data)) {
+          setCities(data)
+        }
+      })
       .catch(() => {})
   }
 
   useEffect(() => { load() }, [])
 
-  const canAdd    = cities.length < MAX_CITIES
-  const available = EXTRA_CITIES.filter(e => !cities.some(c => c.city === e.city))
+  const canAdd    = cities.length < maxCities
+  const available = suggestions.filter(e => !cities.some(c => c.city === e.city))
 
   async function addCity(c) {
     setError(null)

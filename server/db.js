@@ -192,6 +192,17 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL
   );
+
+  -- Personal notes pages (markdown-based scratchpad, replaces static onenote_pages.json)
+  CREATE TABLE IF NOT EXISTS tbl_onenote_pages (
+    id          INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL,
+    notebook_name TEXT   NOT NULL DEFAULT 'Dev Notes',
+    title       TEXT     NOT NULL,
+    body        TEXT     DEFAULT '',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
+  );
 `);
 
 // Migration: rename improvement_notes → tbl_improvements (naming convention)
@@ -271,6 +282,12 @@ if (!todoCols.includes('remark')) {
   db.exec(`ALTER TABLE tbl_to_do ADD COLUMN remark TEXT DEFAULT ''`);
 }
 
+// Migration: add description column to tbl_notes_data (notes now have title + description + content)
+const notesDataCols = db.prepare('PRAGMA table_info(tbl_notes_data)').all().map(c => c.name);
+if (!notesDataCols.includes('description')) {
+  db.exec(`ALTER TABLE tbl_notes_data ADD COLUMN description TEXT DEFAULT ''`);
+}
+
 // Seed news KPIs on first run - National + Tech, both via Google News RSS (no key, no quota)
 const { n: kpiCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_kpi_data').get();
 if (kpiCount === 0) {
@@ -332,6 +349,50 @@ if (credCount === 0) {
   db.prepare(
     "INSERT INTO tbl_credentials (description, password) VALUES ('todo', ?)"
   ).run(hash);
+}
+
+// Migration: add location + timezone to tbl_user_info
+const userCols = db.prepare('PRAGMA table_info(tbl_user_info)').all().map(c => c.name);
+if (!userCols.includes('location')) {
+  db.exec(`ALTER TABLE tbl_user_info ADD COLUMN location TEXT DEFAULT 'Noida, India'`);
+}
+if (!userCols.includes('timezone')) {
+  db.exec(`ALTER TABLE tbl_user_info ADD COLUMN timezone TEXT DEFAULT 'IST (UTC+5:30)'`);
+}
+
+// Seed onenote pages (migrate from static/onenote_pages.json, idempotent)
+const { n: onCount } = db.prepare("SELECT COUNT(*) as n FROM tbl_onenote_pages WHERE deleted_at='0000-00-00 00:00:00'").get();
+if (onCount === 0) {
+  const insertOn = db.prepare('INSERT INTO tbl_onenote_pages (notebook_name, title, body) VALUES (?,?,?)');
+  insertOn.run('Dev Notes', 'FastAPI Architecture Notes',
+    '## FastAPI Architecture\n\n### Key Concepts\n- Async by default with Python asyncio\n- **Pydantic** models for request/response validation\n- Dependency injection via `Depends()`\n- OpenAPI docs auto-generated at `/docs`\n\n### Recommended Structure\n```\napp/\n├── main.py\n├── routers/\n├── models/\n└── dependencies.py\n```\n\n### Useful Patterns\n- Use `APIRouter` to split routes by feature\n- Background tasks via `BackgroundTasks`\n- Lifespan events replace deprecated `on_startup`');
+  insertOn.run('Dev Notes', 'React 19 - Key Changes',
+    '## React 19 Changes\n\n- **Server Actions** are now stable\n- `use()` hook for Promises and Context\n- New compiler (React Forget) auto-memoises components\n- `<form action={serverFn}>` native support\n- Improved Suspense boundaries + streaming\n\n### Migration Notes\n- `ReactDOM.render` fully removed - use `createRoot`\n- `useFormState` → `useActionState`\n- Ref as prop (no forwardRef needed)\n- Improved error messages in dev mode');
+  insertOn.run('Interview Prep', 'System Design: URL Shortener',
+    '## URL Shortener Design\n\n### Scale Requirements\n- 100M new URLs / day (write)\n- 10B redirects / day (100:1 read ratio)\n\n### Key Decisions\n- **Base62** encoding → 7-char IDs (~3.5 trillion combos)\n- **Cassandra** for persistence (high write throughput)\n- **Redis** hot cache with TTL for popular URLs\n- **CDN** edge nodes for static redirect rules\n\n### Flow\n- Write: hash URL → check collision → store → return short code\n- Read: lookup cache → fallback to DB → 301 redirect');
+  insertOn.run('Personal', 'Books Reading List 2026',
+    '## 2026 Reading List\n\n✅ The Pragmatic Programmer\n✅ Clean Code - R.C. Martin\n✅ The Phoenix Project\n📖 Designing Data-Intensive Applications (ch.7 / 12)\n⏳ Staff Engineer - Will Larson\n⏳ A Philosophy of Software Design\n\n### Notes\n- DDIA chapter 7 covers transactions and isolation levels\n- Read chapter 9 before starting distributed systems work\n- Staff Engineer is short - can finish in a weekend');
+}
+
+// Seed YouTube videos into tbl_notes (migrate from static/youtube_videos.json, idempotent per URL)
+{
+  const ytView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='youtube' AND deleted_at='0000-00-00 00:00:00'").get();
+  if (ytView) {
+    const ytSeeds = [
+      { title: 'React in 100 Seconds',   url: 'https://www.youtube.com/embed/Tn6-PIqc4UM', channel: 'Fireship' },
+      { title: 'Python in 100 Seconds',  url: 'https://www.youtube.com/embed/x7X9w_GIm1s', channel: 'Fireship' },
+      { title: 'FastAPI in 100 Seconds', url: 'https://www.youtube.com/embed/iWS9ogMPOI0', channel: 'Fireship' },
+    ];
+    const insertYt = db.prepare(
+      "INSERT INTO tbl_notes (entity_type, entity_id, view_id, title, description, url) VALUES ('youtube',?,?,?,?,?)"
+    );
+    for (const v of ytSeeds) {
+      const exists = db.prepare(
+        "SELECT id FROM tbl_notes WHERE entity_type='youtube' AND entity_id=? AND deleted_at='0000-00-00 00:00:00'"
+      ).get(v.url);
+      if (!exists) insertYt.run(v.url, ytView.id, v.title, v.channel, v.url);
+    }
+  }
 }
 
 module.exports = db;

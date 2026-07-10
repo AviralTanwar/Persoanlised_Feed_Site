@@ -6,11 +6,8 @@ const fs = require('fs');
 const STATIC_DIR = path.join(__dirname, '../../static');
 
 const FILE_MAP = {
-  config: 'config.json',
-  youtube: 'youtube_videos.json',
+  config:  'config.json',
   excuses: 'excuses.json',
-  onenote: 'onenote_pages.json',
-  webpages: 'web_pages.json',
 };
 
 router.get('/:key', (req, res) => {

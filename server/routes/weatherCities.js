@@ -4,15 +4,26 @@ const db = require('../db');
 
 const MAX_CITIES = 6;
 
-// List active cities (soft-deleted ones are hidden)
+const SUGGESTIONS = [
+  { city: 'New Delhi',  country: 'IN' },
+  { city: 'Gurugram',   country: 'IN' },
+  { city: 'Bengaluru',  country: 'IN' },
+  { city: 'Mumbai',     country: 'IN' },
+  { city: 'Lucknow',    country: 'IN' },
+  { city: 'Jaipur',     country: 'IN' },
+  { city: 'Pune',       country: 'IN' },
+  { city: 'Chandigarh', country: 'IN' },
+  { city: 'Hyderabad',  country: 'IN' },
+  { city: 'Kolkata',    country: 'IN' },
+];
+
 router.get('/', (req, res) => {
-  const rows = db.prepare(
+  const cities = db.prepare(
     'SELECT * FROM weathers WHERE deleted_at IS NULL ORDER BY permanent DESC, id ASC'
   ).all();
-  res.json(rows);
+  res.json({ cities, max: MAX_CITIES, suggestions: SUGGESTIONS });
 });
 
-// Add a city - always inserted as removable (permanent = 0)
 router.post('/', (req, res) => {
   const { city, country = 'IN', units = 'metric' } = req.body;
   if (!city || !city.trim()) return res.status(400).json({ error: 'city is required' });
@@ -32,7 +43,6 @@ router.post('/', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM weathers WHERE id = ?').get(info.lastInsertRowid));
 });
 
-// Soft-delete a city - permanent cities cannot be removed
 router.delete('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM weathers WHERE id = ? AND deleted_at IS NULL').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'City not found' });

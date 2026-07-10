@@ -24,17 +24,17 @@ const ACCENT_PALETTE = {
   light: { blue: '#1e66f5', mauve: '#8839ef', peach: '#fe640b', teal: '#179299' },
 }
 
-// Fallback used until /api/view-kpis responds (IDs match what the DB seeds produce)
+// Fallback used until /api/view-kpis responds — no IDs since they're machine-specific
 const DEFAULT_VIEW_KPIS = [
-  { id: 4, section_key: 'year_kpi',     name: 'Year Progress', rank: 1 },
-  { id: 5, section_key: 'hero_band',    name: 'Time & Quotes', rank: 2 },
-  { id: 6, section_key: 'weather',      name: 'Weather',       rank: 3 },
-  { id: 7, section_key: 'news',         name: 'News',          rank: 4 },
-  { id: 8, section_key: 'todo',         name: 'To-Do',         rank: 5 },
-  { id: 1, section_key: 'web_pages',    name: 'Web Pages',     rank: 6 },
-  { id: 2, section_key: 'youtube',      name: 'YouTube',       rank: 7 },
-  { id: 3, section_key: 'improvements', name: 'Improvements',  rank: 8 },
-  { id: 9, section_key: 'onenote',      name: 'OneNote',       rank: 9 },
+  { id: null, section_key: 'year_kpi',     name: 'Year Progress', rank: 1 },
+  { id: null, section_key: 'hero_band',    name: 'Time & Quotes', rank: 2 },
+  { id: null, section_key: 'weather',      name: 'Weather',       rank: 3 },
+  { id: null, section_key: 'news',         name: 'News',          rank: 4 },
+  { id: null, section_key: 'todo',         name: 'To-Do',         rank: 5 },
+  { id: null, section_key: 'web_pages',    name: 'Web Pages',     rank: 6 },
+  { id: null, section_key: 'youtube',      name: 'YouTube',       rank: 7 },
+  { id: null, section_key: 'improvements', name: 'Improvements',  rank: 8 },
+  { id: null, section_key: 'onenote',      name: 'OneNote',       rank: 9 },
 ]
 
 export default function App() {
@@ -133,53 +133,53 @@ export default function App() {
   function renderViewSection(kpi) {
     switch (kpi.section_key) {
       case 'year_kpi':
-        return <div key={kpi.id} className="reveal"><YearKPI /></div>
+        return <div key={kpi.section_key} className="reveal"><YearKPI /></div>
       case 'hero_band':
         return (
-          <div key={kpi.id} className="hero-band reveal">
+          <div key={kpi.section_key} className="hero-band reveal">
             <Hero clock={tweaks.clock} />
             <QuoteBanner excuses={excuses} />
           </div>
         )
       case 'weather':
         return (
-          <section key={kpi.id} id="weather" className="sec reveal" ref={setRef('weather')}>
+          <section key={kpi.section_key} id="weather" className="sec reveal" ref={setRef('weather')}>
             <Weather />
           </section>
         )
       case 'news':
         return (
-          <section key={kpi.id} id="news" className="sec reveal" ref={setRef('news')}>
+          <section key={kpi.section_key} id="news" className="sec reveal" ref={setRef('news')}>
             <News techRef={setRef('tech')} />
           </section>
         )
       case 'todo':
         return (
-          <section key={kpi.id} id="todo" className="sec reveal" ref={setRef('todo')}>
+          <section key={kpi.section_key} id="todo" className="sec reveal" ref={setRef('todo')}>
             <ToDo />
           </section>
         )
       case 'web_pages':
         return (
-          <section key={kpi.id} id="webpages" className="sec reveal" ref={setRef('webpages')}>
-            <WebPages viewKpi={kpi} />
+          <section key={kpi.section_key} id="webpages" className="sec reveal" ref={setRef('webpages')}>
+            <WebPages viewKpi={kpi} theme={theme} onThemeToggle={toggleTheme} />
           </section>
         )
       case 'youtube':
         return (
-          <section key={kpi.id} id="youtube" className="sec reveal" ref={setRef('youtube')}>
+          <section key={kpi.section_key} id="youtube" className="sec reveal" ref={setRef('youtube')}>
             <YouTube viewKpi={kpi} />
           </section>
         )
       case 'improvements':
         return (
-          <section key={kpi.id} id="improvements" className="sec reveal" ref={setRef('improvements')}>
+          <section key={kpi.section_key} id="improvements" className="sec reveal" ref={setRef('improvements')}>
             <Improvements viewKpi={kpi} />
           </section>
         )
       case 'onenote':
         return (
-          <section key={kpi.id} id="notes" className="sec reveal" ref={setRef('notes')}>
+          <section key={kpi.section_key} id="notes" className="sec reveal" ref={setRef('notes')}>
             <OneNote />
           </section>
         )
@@ -203,6 +203,7 @@ export default function App() {
         clock={tweaks.clock}
         theme={theme}
         onThemeToggle={toggleTheme}
+        viewKpis={viewKpis}
       />
 
       {/* ── Tweaks button ── */}

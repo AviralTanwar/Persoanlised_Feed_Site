@@ -4,7 +4,21 @@
   gap: 12px;
 }
 
-.on-sidebar { display: flex; flex-direction: column; gap: 5px; }
+.on-sidebar { display: flex; flex-direction: column; gap: 4px; }
+
+.on-nb-group { margin-bottom: 8px; }
+.on-nb-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ov0); padding: 4px 2px 3px; }
+
+.on-item-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 8px;
+}
+.on-item-wrap.on { background: color-mix(in srgb, var(--mauve) 6%, transparent); }
+
+.on-item-actions { display: none; flex-shrink: 0; gap: 2px; }
+.on-item-wrap:hover .on-item-actions { display: flex; }
 
 .on-item {
   background: transparent;
@@ -17,14 +31,20 @@
   width: 100%;
 }
 .on-item:hover { background: var(--hover-2); border-color: var(--s1); }
-.on-item.on    { background: color-mix(in srgb, var(--mauve) 10%, transparent); border-color: var(--mauve); }
+.on-item.on    { background: transparent; border-color: var(--mauve); }
 
 .on-item-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
 .on-item-meta  { font-size: 10px; color: var(--ov0); }
 
-.on-reader { max-height: 340px; overflow-y: auto; padding-right: 4px; }
+.on-reader { max-height: 340px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px; }
+.on-reader-hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .on-reader-title { font-size: 14px; font-weight: 700; color: var(--text2); margin-bottom: 3px; }
-.on-reader-meta  { font-size: 10px; color: var(--ov0); margin-bottom: 12px; }
+.on-reader-meta  { font-size: 10px; color: var(--ov0); margin-bottom: 0; }
+
+.on-form { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.on-form-row { display: flex; flex-direction: column; gap: 4px; }
+.on-form-lbl { font-size: 11px; font-weight: 600; color: var(--ov0); }
+.on-body-input { min-height: 200px; resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; }
 
 /* Markdown rendering */
 .md-h2   { color: var(--accent);  font-size: 13.5px; margin: .7rem 0 .3rem; font-weight: 700; }
