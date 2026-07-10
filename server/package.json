@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "API Explorer Dashboard — Express server",
+  "description": "API Explorer Dashboard - Express server",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

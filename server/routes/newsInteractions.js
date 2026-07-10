@@ -14,14 +14,14 @@ router.get('/', (req, res) => {
   res.json(map);
 });
 
-// POST upsert — accepts partial updates.
+// POST upsert - accepts partial updates.
 // news_api_id: which tbl_news_kpi_data row this article came from (set once, on first insert).
 // response: -1 dislike, 0 skipped, 1 liked.
 // link_open: 1 once the article link has been opened.
 // clicked_on_more: 1 once the "more" description toggle has been expanded.
 // live: 1 while the article is currently rendered on the dashboard, 0 once it leaves screen.
 // news_date: the article's actual publish date (set once, on first insert).
-// shown: most recent interaction code — 0 displayed/none, 1 link, 2 more, 3 like, 4 dislike, 5 removed.
+// shown: most recent interaction code - 0 displayed/none, 1 link, 2 more, 3 like, 4 dislike, 5 removed.
 router.post('/', (req, res) => {
   const {
     link, headline, source = '', summary = '', news_api_id = null,

@@ -73,7 +73,7 @@ export default function QuoteBanner({ excuses }) {
       <div className="quote-block">
         <div className="quote-label dev">⚡ Developer Excuse</div>
         <div className="quote-txt" style={{ opacity: excuseFade ? 1 : 0 }}>"{excuse}"</div>
-        <div className="quote-src">— via developerexcuses.com</div>
+        <div className="quote-src">- via developerexcuses.com</div>
       </div>
 
       <div className="quote-div" />
@@ -83,7 +83,7 @@ export default function QuoteBanner({ excuses }) {
         <div className="quote-txt" style={{ opacity: (quoteFade && !loading) ? 1 : 0.35 }}>
           {loading && !quote ? 'Summoning some motivation…' : `"${quote?.quote ?? ''}"`}
         </div>
-        <div className="quote-src">— {quote?.author ?? '…'}</div>
+        <div className="quote-src">- {quote?.author ?? '…'}</div>
       </div>
 
       <div className="quote-foot">

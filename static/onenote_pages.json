@@ -10,8 +10,8 @@
     "id": "on2",
     "notebook": "Dev Notes",
     "modified": "2026-06-05",
-    "title": "React 19 — Key Changes",
-    "body": "## React 19 Changes\n\n- **Server Actions** are now stable\n- `use()` hook for Promises and Context\n- New compiler (React Forget) auto-memoises components\n- `<form action={serverFn}>` native support\n- Improved Suspense boundaries + streaming\n\n### Migration Notes\n- `ReactDOM.render` fully removed — use `createRoot`\n- `useFormState` → `useActionState`\n- Ref as prop (no forwardRef needed)\n- Improved error messages in dev mode"
+    "title": "React 19 - Key Changes",
+    "body": "## React 19 Changes\n\n- **Server Actions** are now stable\n- `use()` hook for Promises and Context\n- New compiler (React Forget) auto-memoises components\n- `<form action={serverFn}>` native support\n- Improved Suspense boundaries + streaming\n\n### Migration Notes\n- `ReactDOM.render` fully removed - use `createRoot`\n- `useFormState` → `useActionState`\n- Ref as prop (no forwardRef needed)\n- Improved error messages in dev mode"
   },
   {
     "id": "on3",
@@ -25,6 +25,6 @@
     "notebook": "Personal",
     "modified": "2026-05-28",
     "title": "Books Reading List 2026",
-    "body": "## 2026 Reading List\n\n✅ The Pragmatic Programmer\n✅ Clean Code — R.C. Martin\n✅ The Phoenix Project\n📖 Designing Data-Intensive Applications (ch.7 / 12)\n⏳ Staff Engineer — Will Larson\n⏳ A Philosophy of Software Design\n\n### Notes\n- DDIA chapter 7 covers transactions and isolation levels\n- Read chapter 9 before starting distributed systems work\n- Staff Engineer is short — can finish in a weekend"
+    "body": "## 2026 Reading List\n\n✅ The Pragmatic Programmer\n✅ Clean Code - R.C. Martin\n✅ The Phoenix Project\n📖 Designing Data-Intensive Applications (ch.7 / 12)\n⏳ Staff Engineer - Will Larson\n⏳ A Philosophy of Software Design\n\n### Notes\n- DDIA chapter 7 covers transactions and isolation levels\n- Read chapter 9 before starting distributed systems work\n- Staff Engineer is short - can finish in a weekend"
   }
 ]

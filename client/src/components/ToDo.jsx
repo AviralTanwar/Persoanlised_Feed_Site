@@ -22,7 +22,7 @@ const LS = {
 }
 
 function fmtDate(dt) {
-  if (!dt) return '—'
+  if (!dt) return '-'
   return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -306,7 +306,7 @@ export default function ToDo() {
             </div>
           </aside>
 
-          {/* Resize handle — drag to resize sidebar */}
+          {/* Resize handle - drag to resize sidebar */}
           {sidebarOpen && (
             <div className="todo-resize-handle" onMouseDown={onResizeStart} />
           )}

@@ -18,7 +18,7 @@ import './App.css'
 const DEFAULT_TWEAKS = { accent: 'peach', density: 'compact', clock: '24h' }
 const ACCENT_KEYS    = ['blue', 'mauve', 'peach', 'teal']
 // Same hues, but the light variants are saturated enough to read on a light
-// background — the dark-mode pastels (e.g. peach #fab387) fail contrast there.
+// background - the dark-mode pastels (e.g. peach #fab387) fail contrast there.
 const ACCENT_PALETTE = {
   dark:  { blue: '#89b4fa', mauve: '#cba6f7', peach: '#fab387', teal: '#94e2d5' },
   light: { blue: '#1e66f5', mauve: '#8839ef', peach: '#fe640b', teal: '#179299' },
@@ -252,7 +252,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Page content — order driven by tbl_view_kpi.rank ── */}
+      {/* ── Page content - order driven by tbl_view_kpi.rank ── */}
       <main className="content">
         {viewKpis.map(renderViewSection)}
       </main>

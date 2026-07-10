@@ -97,7 +97,7 @@
   height: 0;
 }
 
-/* ── Shared typography — editor + read-only display ───────────────────── */
+/* ── Shared typography - editor + read-only display ───────────────────── */
 
 .re-content .ProseMirror h1, .rich-display h1 {
   font-size: 1.35em;

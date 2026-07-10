@@ -1,6 +1,6 @@
 .wgrid {
   display: grid;
-  /* auto-fit collapses empty tracks — tiles always stretch to fill the full width */
+  /* auto-fit collapses empty tracks - tiles always stretch to fill the full width */
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
@@ -82,7 +82,7 @@
 .wtile-stat  { display: flex; flex-direction: column; font-size: 11px; }
 .wtile-val   { font-size: 14px; font-weight: 700; margin-top: 1px; }
 
-/* City picker — inline below header */
+/* City picker - inline below header */
 .wcity-picker {
   display: flex;
   flex-direction: column;

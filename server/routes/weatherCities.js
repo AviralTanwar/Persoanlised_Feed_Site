@@ -12,7 +12,7 @@ router.get('/', (req, res) => {
   res.json(rows);
 });
 
-// Add a city — always inserted as removable (permanent = 0)
+// Add a city - always inserted as removable (permanent = 0)
 router.post('/', (req, res) => {
   const { city, country = 'IN', units = 'metric' } = req.body;
   if (!city || !city.trim()) return res.status(400).json({ error: 'city is required' });
@@ -32,7 +32,7 @@ router.post('/', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM weathers WHERE id = ?').get(info.lastInsertRowid));
 });
 
-// Soft-delete a city — permanent cities cannot be removed
+// Soft-delete a city - permanent cities cannot be removed
 router.delete('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM weathers WHERE id = ? AND deleted_at IS NULL').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'City not found' });

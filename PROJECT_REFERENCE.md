@@ -1,4 +1,4 @@
-# Project Reference — API Explorer Dashboard
+# Project Reference - API Explorer Dashboard
 
 Use this file when starting from scratch. It has everything you need to rebuild the project: folder structure, packages, API keys, database schema, routes, and setup steps.
 
@@ -11,7 +11,7 @@ Use this file when starting from scratch. It has everything you need to rebuild 
 | Frontend | React 19 + Vite |
 | Backend | Node.js + Express |
 | Database | SQLite via `better-sqlite3` |
-| HTTP (server) | Native `fetch` (Node 18+) — DO NOT use axios (supply chain attack) |
+| HTTP (server) | Native `fetch` (Node 18+) - DO NOT use axios (supply chain attack) |
 | HTTP (client) | Native `fetch` (built into browser) |
 | Styling | Plain CSS (Catppuccin dark theme, `#11111b` background) |
 
@@ -56,14 +56,14 @@ project-root/
 │   ├── youtube_videos.json   # your YouTube video list
 │   └── web_pages.json        # pages to annotate
 │
-├── .env                      # API keys — NEVER commit (gitignored)
+├── .env                      # API keys - NEVER commit (gitignored)
 ├── .env.example              # template to commit
 └── .gitignore
 ```
 
 ---
 
-## Server — npm packages
+## Server - npm packages
 
 ```bash
 npm init -y
@@ -74,7 +74,7 @@ No axios. No other HTTP library. Use native `fetch`.
 
 ---
 
-## Client — npm packages
+## Client - npm packages
 
 ```bash
 npm create vite@latest . -- --template react
@@ -90,7 +90,7 @@ No axios. No react-router (single page). No Redux.
 ```env
 OPENWEATHER_API_KEY=        # openweathermap.org → free signup → My API Keys
 NEWS_API_KEY=               # newsapi.org → Get API Key → verify email
-MS_CLIENT_ID=               # optional — Azure Portal → App Registration (for OneNote)
+MS_CLIENT_ID=               # optional - Azure Portal → App Registration (for OneNote)
 MS_TENANT_ID=common         # leave as "common" unless you know your tenant ID
 ```
 
@@ -100,7 +100,7 @@ How to get each key:
 |---|---|
 | `OPENWEATHER_API_KEY` | openweathermap.org → Sign up → API Keys tab → copy Default key (takes ~10 min to activate) |
 | `NEWS_API_KEY` | newsapi.org → Get API Key → verify email → copy key |
-| Hacker News | No key needed — open Firebase API, always free |
+| Hacker News | No key needed - open Firebase API, always free |
 | `MS_CLIENT_ID` | Azure Portal → Microsoft Entra ID → App registrations → New → Redirect URI: `http://localhost` → API permissions → add `Notes.Read` from Microsoft Graph |
 
 ---
@@ -269,12 +269,12 @@ dist/
 ## Run commands
 
 ```bash
-# Terminal 1 — backend
+# Terminal 1 - backend
 cd server
 node index.js          # http://localhost:3001
 # or: node --watch index.js   (auto-restart on save, Node 18+)
 
-# Terminal 2 — frontend
+# Terminal 2 - frontend
 cd client
 npm run dev            # http://localhost:5173
 ```
@@ -313,9 +313,9 @@ npm run dev            # http://localhost:5173
 ## Security rules
 
 - Never commit `.env`
-- Never use `axios` — use native `fetch` (axios had a supply chain attack)
-- `db/` folder is gitignored — your SQLite data never leaves your machine
-- MS_CLIENT_ID is optional — only needed if you want OneNote integration
+- Never use `axios` - use native `fetch` (axios had a supply chain attack)
+- `db/` folder is gitignored - your SQLite data never leaves your machine
+- MS_CLIENT_ID is optional - only needed if you want OneNote integration
 
 ---
 

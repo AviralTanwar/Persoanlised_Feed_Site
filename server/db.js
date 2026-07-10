@@ -219,7 +219,7 @@ if (!viewCols.includes('section_key')) {
   db.prepare("UPDATE tbl_view_kpi SET section_key='improvements', rank=8 WHERE id=3").run();
 }
 
-// Seed tbl_view_kpi — all dashboard sections, idempotent by section_key
+// Seed tbl_view_kpi - all dashboard sections, idempotent by section_key
 const existingKeys = new Set(
   db.prepare("SELECT section_key FROM tbl_view_kpi WHERE section_key != '' AND deleted_at='0000-00-00 00:00:00'")
     .all().map(r => r.section_key)
@@ -271,7 +271,7 @@ if (!todoCols.includes('remark')) {
   db.exec(`ALTER TABLE tbl_to_do ADD COLUMN remark TEXT DEFAULT ''`);
 }
 
-// Seed news KPIs on first run — National + Tech, both via Google News RSS (no key, no quota)
+// Seed news KPIs on first run - National + Tech, both via Google News RSS (no key, no quota)
 const { n: kpiCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_kpi_data').get();
 if (kpiCount === 0) {
   const insertKpi = db.prepare(`
@@ -292,7 +292,7 @@ if (kpiCount === 0) {
 
 
 
-// Seed permanent cities on first run — these used to live in static/config.json
+// Seed permanent cities on first run - these used to live in static/config.json
 const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM weathers').get();
 if (weatherCount === 0) {
   const insertCity = db.prepare(
@@ -310,10 +310,10 @@ if (n === 0) {
   );
   const seeds = [
     ['Master React Server Components', 'RSC patterns, Suspense, streaming SSR. React 19 RFC + Next.js 15 docs.', 'high', 'in_progress'],
-    ['Daily DSA — 2 Problems / Day', 'Graphs and dynamic programming. NeetCode 150.', 'high', 'pending'],
-    ['Migrate Dashboard — FastAPI + React', 'Follow README roadmap. FastAPI endpoints first, then migrate frontend.', 'high', 'pending'],
-    ['Read Designing Data-Intensive Applications', 'Chapter 7+ — consistency models and replication strategies.', 'medium', 'in_progress'],
-    ['Morning run — 5 km daily', 'Build from 3 km over 2 weeks. Before 6:30 AM.', 'medium', 'pending'],
+    ['Daily DSA - 2 Problems / Day', 'Graphs and dynamic programming. NeetCode 150.', 'high', 'pending'],
+    ['Migrate Dashboard - FastAPI + React', 'Follow README roadmap. FastAPI endpoints first, then migrate frontend.', 'high', 'pending'],
+    ['Read Designing Data-Intensive Applications', 'Chapter 7+ - consistency models and replication strategies.', 'medium', 'in_progress'],
+    ['Morning run - 5 km daily', 'Build from 3 km over 2 weeks. Before 6:30 AM.', 'medium', 'pending'],
   ];
   for (const row of seeds) insert.run(...row);
 }

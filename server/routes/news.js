@@ -68,7 +68,7 @@ const noFreshUntil = new Map();
 router.get('/:kpiId/old', (req, res) => {
   const kpiId = Number(req.params.kpiId);
   const count = Math.min(Number(req.query.count) || 30, 100);
-  // Return everything ever seen for this KPI — both reacted and unreacted —
+  // Return everything ever seen for this KPI - both reacted and unreacted -
   // except articles that are currently live on screen (already in the main panel).
   const rows = db.prepare(`
     SELECT * FROM tbl_news_data
@@ -101,7 +101,7 @@ router.get('/:kpiId', async (req, res) => {
 
       // Only exclude articles you have explicitly reacted to (liked/disliked/skipped)
       // or that are currently rendered on screen (live=1). Articles you were merely
-      // shown but ignored cycle back freely — prevents the exclusion set from growing
+      // shown but ignored cycle back freely - prevents the exclusion set from growing
       // without bound and strangling the feed pool over time.
       const excluded = new Set(
         db.prepare(`
@@ -118,7 +118,7 @@ router.get('/:kpiId', async (req, res) => {
       noFreshUntil.set(kpiId, Date.now() + NO_FRESH_TTL_MS);
     }
 
-    // No fresh news — tell the client to show the "seen everything" state.
+    // No fresh news - tell the client to show the "seen everything" state.
     // Old/previously-seen articles are served separately via /:kpiId/old
     // only when the user explicitly clicks "Review old news".
     res.json({ tier: 'exhausted', articles: [] });

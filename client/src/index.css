@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   TOKENS — DARK (default, Catppuccin Mocha)
+   TOKENS - DARK (default, Catppuccin Mocha)
 ═══════════════════════════════════════════════════════════ */
 :root {
   --bg:      #07070d;
@@ -26,7 +26,7 @@
   --accent:  #fab387;
   --accent2: #cba6f7;
 
-  /* Card padding — driven by density tweak */
+  /* Card padding - driven by density tweak */
   --cp-v: 0.75rem;
   --cp-h: 0.9rem;
 
@@ -61,7 +61,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TOKENS — LIGHT (Catppuccin Latte)
+   TOKENS - LIGHT (Catppuccin Latte)
 ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
   --bg:      #eff1f5;

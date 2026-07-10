@@ -7,7 +7,7 @@ import './Weather.css'
 
 const MAX_CITIES = 6
 
-// Built entirely from theme tokens (see THEME_COLORS.md) — named accents shift
+// Built entirely from theme tokens (see THEME_COLORS.md) - named accents shift
 // between Mocha/Latte palettes so each tile stays legible whichever theme is active.
 const COND = {
   Clear:        { bg: 'linear-gradient(145deg, var(--yellow), var(--peach))',  dark: true  },
@@ -159,7 +159,7 @@ export default function Weather() {
   }
 
   function removeCity(id) {
-    setCities(cs => cs.filter(c => c.id !== id)) // optimistic — DB soft-deletes (sets deleted_at)
+    setCities(cs => cs.filter(c => c.id !== id)) // optimistic - DB soft-deletes (sets deleted_at)
     fetch(`/api/weather-cities/${id}`, { method: 'DELETE' }).catch(() => {})
   }
 
@@ -184,7 +184,7 @@ export default function Weather() {
         }
       />
 
-      {/* City picker — drops inline below header when open */}
+      {/* City picker - drops inline below header when open */}
       {picking && (
         <div className="wcity-picker">
           <span className="wcity-picker-lbl">Select a city to add:</span>

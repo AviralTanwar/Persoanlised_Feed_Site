@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Live KPIs only — this list drives how many news panels the dashboard renders
+// Live KPIs only - this list drives how many news panels the dashboard renders
 router.get('/', (req, res) => {
   const rows = db.prepare(`
     SELECT id, logo, name, tag

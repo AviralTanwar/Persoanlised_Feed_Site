@@ -4,7 +4,7 @@ import SectionHeader from './shared/SectionHeader'
 import NewsPanel from './NewsPanel'
 import './News.css'
 
-// Renders one NewsPanel per live row in tbl_news_kpi_data — add/disable a
+// Renders one NewsPanel per live row in tbl_news_kpi_data - add/disable a
 // source there and this section grows/shrinks to match, no code changes needed.
 export default function News({ techRef }) {
   const [kpis, setKpis] = useState([])

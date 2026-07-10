@@ -98,7 +98,7 @@ export default function NewsPanel({ kpi }) {
       setExiting(e => { const n = { ...e }; delete n[id]; return n })
       if (nextVisible.length === 0) {
         if (reviewMode) {
-          // Review batch exhausted — return to "caught up" state
+          // Review batch exhausted - return to "caught up" state
           setReviewMode(false)
         } else {
           load()
@@ -311,7 +311,7 @@ export default function NewsPanel({ kpi }) {
 
       {!loading && !error && visible.length === 0 && (
         <div className="news-exhausted">
-          <p className="empty-msg">You're all caught up — no new stories right now.</p>
+          <p className="empty-msg">You're all caught up - no new stories right now.</p>
           <button className="btn-g" onClick={openReview}>↺ Review old news</button>
         </div>
       )}

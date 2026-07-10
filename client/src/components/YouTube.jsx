@@ -127,7 +127,7 @@ export default function YouTube({ viewKpi = {} }) {
           {showNotes && (
             <div className="yt-notes">
               <div className="yt-notes-hdr">
-                <span>Notes — {vid?.title}</span>
+                <span>Notes - {vid?.title}</span>
                 {notes.length < MAX_NOTES && !addingNote && (
                   <button className="btn-g" style={{ fontSize: 11 }}
                     onClick={() => { setAddingNote(true); setNoteDraft({ title: '', content: '' }) }}>
