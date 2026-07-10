@@ -3,7 +3,10 @@ const router = express.Router();
 const db = require('../db');
 
 function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
   const h = Math.floor(diff / 3600000);
   if (h < 1) return 'just now';
   if (h < 24) return `${h}h ago`;
@@ -11,13 +14,17 @@ function timeAgo(dateStr) {
 }
 
 function decodeEntities(str) {
+  if (!str) return '';
   return str
+    .replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+    .replace(/&nbsp;/g, ' ')
+    .trim();
 }
 
 function stripTags(html) {
@@ -35,11 +42,14 @@ function toSqliteDate(pubDate) {
   return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
 }
 
-function parseFeed(xml) {
+function parseFeed(xml, kpiName = '') {
   const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
   return blocks.map((block, i) => {
     const rawTitle = decodeEntities(tag(block, 'title'));
-    const src   = decodeEntities(tag(block, 'source')) || 'Unknown';
+    const src   = decodeEntities(tag(block, 'source'))
+               || decodeEntities(tag(block, 'dc:creator'))
+               || kpiName
+               || 'Unknown';
     const title = rawTitle.replace(/ - [^-]+$/, '') || rawTitle;
     const link  = tag(block, 'link').trim() || `n${i}`;
     const desc  = stripTags(tag(block, 'description')).slice(0, 220);
@@ -104,14 +114,16 @@ router.get('/:kpiId', async (req, res) => {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       });
       if (!response.ok) return res.status(502).json({ error: `Feed returned ${response.status}` });
-      const articles = parseFeed(await response.text());
+      const articles = parseFeed(await response.text(), kpi.name);
 
-      // Only exclude articles the user has explicitly reacted to (liked/disliked/skipped).
-      // live=1 is no longer used for exclusion — stale flags are cleared above on each request.
+      // "Fresh" = never appeared in this feed before. Any article already in the DB
+      // has been seen (markLive inserts it the moment it hits the screen).
+      // Liked/disliked/swiped all stay excluded. New RSS articles that weren't in DB
+      // are always fresh. When the whole feed is known → exhausted state.
       const excluded = new Set(
         db.prepare(`
           SELECT link FROM tbl_news_data
-          WHERE news_api_id = ? AND deleted_at IS NULL AND response != 0
+          WHERE news_api_id = ? AND deleted_at IS NULL
         `).all(kpiId).map(r => r.link)
       );
       const fresh = articles.filter(a => !excluded.has(a.id));

@@ -309,10 +309,12 @@ export default function NewsPanel({ kpi }) {
         </div>
       )}
 
-      {!loading && !error && visible.length === 0 && (
+      {!loading && !error && tier === 'exhausted' && visible.length === 0 && !reviewMode && (
         <div className="news-exhausted">
-          <p className="empty-msg">You're all caught up - no new stories right now.</p>
-          <button className="btn-g" onClick={openReview}>↺ Review old news</button>
+          <div className="news-exhausted-icon">✓</div>
+          <div className="news-exhausted-title">All caught up!</div>
+          <div className="news-exhausted-sub">No new {kpi.name} stories since your last visit.</div>
+          <button className="news-review-btn" onClick={openReview}>↺ Review old news</button>
         </div>
       )}
 

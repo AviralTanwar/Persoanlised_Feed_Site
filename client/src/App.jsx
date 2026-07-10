@@ -47,6 +47,12 @@ export default function App() {
   const [viewKpis, setViewKpis]         = useState(DEFAULT_VIEW_KPIS)
   const sectionRefs = useRef({})
 
+  // ── Prevent browser scroll restoration from jumping past the top ──
+  useEffect(() => {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+    window.scrollTo(0, 0)
+  }, [])
+
   // ── Load excuses ──
   useEffect(() => {
     fetch('/api/static/excuses').then(r => r.json()).then(setExcuses)

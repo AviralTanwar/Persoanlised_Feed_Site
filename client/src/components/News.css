@@ -48,10 +48,63 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 24px 12px;
+  gap: 12px;
+  padding: 32px 16px 28px;
   text-align: center;
+  animation: fadeUp .35s ease both;
 }
+
+.news-exhausted-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  border: 2px solid color-mix(in srgb, var(--green) 38%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--green);
+  box-shadow: 0 0 18px -4px color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+.news-exhausted-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.news-exhausted-sub {
+  font-size: 12px;
+  color: var(--ov0);
+  margin-top: -4px;
+  max-width: 220px;
+  line-height: 1.5;
+}
+
+.news-review-btn {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 20px;
+  padding: 8px 22px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all .18s;
+  font-family: inherit;
+  letter-spacing: .2px;
+  margin-top: 4px;
+}
+.news-review-btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.news-review-btn:active { transform: translateY(0); }
 
 /* ── Old news banner ── */
 .news-old-banner {
