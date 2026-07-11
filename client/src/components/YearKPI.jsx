@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import useTime from '../hooks/useTime'
 import './YearKPI.css'
 
 function statusColor(pctLeft) {
@@ -10,13 +11,27 @@ function statusColor(pctLeft) {
 
 export default function YearKPI() {
   const ref = useRef()
+  const now = useTime()
+  const [tzInfo, setTzInfo] = useState({ tz_sign: '+', tz_offset: '5:30' })
 
-  const now       = new Date()
-  const year      = now.getFullYear()
-  const start     = new Date(year, 0, 1)
-  const end       = new Date(year + 1, 0, 1)
+  useEffect(() => {
+    fetch('/api/user-info')
+      .then(r => r.json())
+      .then(d => { if (d && !d.error) setTzInfo(d) })
+      .catch(() => {})
+  }, [])
+
+  // Apply stored UTC offset — same formula as Hero.jsx
+  const [offH, offM] = (tzInfo.tz_offset || '5:30').split(':').map(Number)
+  const sign   = tzInfo.tz_sign === '-' ? -1 : 1
+  const tzNow  = new Date(now.getTime() + sign * (offH * 60 + (offM || 0)) * 60000)
+
+  // All date arithmetic using UTC methods on the offset-adjusted instant
+  const year      = tzNow.getUTCFullYear()
+  const start     = new Date(Date.UTC(year, 0, 1))
+  const end       = new Date(Date.UTC(year + 1, 0, 1))
   const total     = Math.round((end - start) / 86400000)
-  const dayOfYear = Math.floor((now - start) / 86400000) + 1
+  const dayOfYear = Math.floor((tzNow - start) / 86400000) + 1
   const daysLeft  = total - dayOfYear
   const pctLeft   = (daysLeft / total) * 100
   const pctFilled = (dayOfYear / total) * 100
