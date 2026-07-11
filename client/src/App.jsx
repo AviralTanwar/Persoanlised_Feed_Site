@@ -178,11 +178,7 @@ export default function App() {
           </section>
         )
       case 'improvements':
-        return (
-          <section key={kpi.section_key} id="improvements" className="sec reveal" ref={setRef('improvements')}>
-            <Improvements viewKpi={kpi} />
-          </section>
-        )
+        return null
       case 'onenote':
         return (
           <section key={kpi.section_key} id="notes" className="sec reveal" ref={setRef('notes')}>
@@ -258,6 +254,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ── Improvements FAB + panel (always mounted, self-contained) ── */}
+      <Improvements />
 
       {/* ── Page content - order driven by tbl_view_kpi.rank ── */}
       <main className="content">

@@ -15,12 +15,13 @@ router.post('/', (req, res) => {
 });
 
 router.patch('/:id', (req, res) => {
-  const { status, priority, title, detail } = req.body;
+  const { status, priority, title, detail, is_kpi } = req.body;
   const id = req.params.id;
-  if (status)   db.prepare('UPDATE tbl_improvements SET status=? WHERE id=?').run(status, id);
-  if (priority) db.prepare('UPDATE tbl_improvements SET priority=? WHERE id=?').run(priority, id);
-  if (title)    db.prepare('UPDATE tbl_improvements SET title=? WHERE id=?').run(title, id);
-  if (detail !== undefined) db.prepare('UPDATE tbl_improvements SET detail=? WHERE id=?').run(detail, id);
+  if (status !== undefined)   db.prepare('UPDATE tbl_improvements SET status=? WHERE id=?').run(status, id);
+  if (priority !== undefined) db.prepare('UPDATE tbl_improvements SET priority=? WHERE id=?').run(priority, id);
+  if (title !== undefined)    db.prepare('UPDATE tbl_improvements SET title=? WHERE id=?').run(title, id);
+  if (detail !== undefined)   db.prepare('UPDATE tbl_improvements SET detail=? WHERE id=?').run(detail, id);
+  if (is_kpi !== undefined)   db.prepare('UPDATE tbl_improvements SET is_kpi=? WHERE id=?').run(is_kpi ? 1 : 0, id);
   const row = db.prepare('SELECT * FROM tbl_improvements WHERE id=?').get(id);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(row);

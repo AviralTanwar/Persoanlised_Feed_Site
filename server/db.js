@@ -220,6 +220,14 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
+// Migration: add is_kpi flag to tbl_improvements
+{
+  const impCols = db.prepare('PRAGMA table_info(tbl_improvements)').all().map(c => c.name);
+  if (!impCols.includes('is_kpi')) {
+    db.exec(`ALTER TABLE tbl_improvements ADD COLUMN is_kpi INTEGER NOT NULL DEFAULT 0 CHECK(is_kpi IN (0, 1))`);
+  }
+}
+
 // Migration: add section_key column so each row knows which dashboard component it drives
 const viewCols = db.prepare('PRAGMA table_info(tbl_view_kpi)').all().map(c => c.name);
 if (!viewCols.includes('section_key')) {
@@ -437,6 +445,29 @@ db.prepare(`UPDATE tbl_news_data SET source='NDTV'       WHERE news_api_id=1 AND
         "SELECT id FROM tbl_notes WHERE entity_type='youtube' AND entity_id=? AND deleted_at='0000-00-00 00:00:00'"
       ).get(v.url);
       if (!exists) insertYt.run(v.url, ytView.id, v.title, v.channel, v.url);
+    }
+  }
+}
+
+// Migration: shift Personal Feed Dashboard (tbl_to_do_summary id=7) tasks → tbl_improvements
+// Only runs once — guarded by tbl_improvements being empty AND board tasks existing
+{
+  const impCount = db.prepare('SELECT COUNT(*) as n FROM tbl_improvements').get().n;
+  if (impCount === 0) {
+    const pfbBoard = db.prepare("SELECT id FROM tbl_to_do_summary WHERE id=7 AND deleted_at='0000-00-00 00:00:00'").get();
+    if (pfbBoard) {
+      const pfbTasks = db.prepare(
+        "SELECT * FROM tbl_to_do WHERE summary_id=7 AND deleted_at='0000-00-00 00:00:00'"
+      ).all();
+      if (pfbTasks.length > 0) {
+        const insertImp = db.prepare(
+          'INSERT INTO tbl_improvements (title, detail, priority, status, is_kpi) VALUES (?, ?, ?, ?, 0)'
+        );
+        for (const t of pfbTasks) {
+          insertImp.run(t.title, t.description || '', t.priority || 'medium', t.status || 'pending');
+        }
+        db.prepare("UPDATE tbl_to_do_summary SET deleted_at=datetime('now') WHERE id=7").run();
+      }
     }
   }
 }

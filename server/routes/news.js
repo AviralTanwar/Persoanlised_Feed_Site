@@ -135,10 +135,13 @@ router.get('/:kpiId', async (req, res) => {
       // has been seen (markLive inserts it the moment it hits the screen).
       // Liked/disliked/swiped all stay excluded. New RSS articles that weren't in DB
       // are always fresh. When the whole feed is known → exhausted state.
+      // Only permanently exclude articles the user explicitly acted on:
+      // shown=3 liked, shown=4 disliked, shown=5 swiped/skipped.
+      // Articles just viewed (shown=0/1/2) re-appear as fresh on the next load.
       const excluded = new Set(
         db.prepare(`
           SELECT link FROM tbl_news_data
-          WHERE news_api_id = ? AND deleted_at IS NULL
+          WHERE news_api_id = ? AND deleted_at IS NULL AND shown >= 3
         `).all(kpiId).map(r => r.link)
       );
       const fresh = articles.filter(a => !excluded.has(a.id));
