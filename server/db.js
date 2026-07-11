@@ -367,6 +367,10 @@ if (!userCols.includes('location')) {
 if (!userCols.includes('timezone')) {
   db.exec(`ALTER TABLE tbl_user_info ADD COLUMN timezone TEXT DEFAULT 'IST (UTC+5:30)'`);
 }
+if (!userCols.includes('salutation')) {
+  db.exec(`ALTER TABLE tbl_user_info ADD COLUMN salutation TEXT DEFAULT 'Mr'`);
+  db.prepare("UPDATE tbl_user_info SET salutation = 'Mr'").run();
+}
 
 // Seed onenote pages (migrate from static/onenote_pages.json, idempotent)
 const { n: onCount } = db.prepare("SELECT COUNT(*) as n FROM tbl_onenote_pages WHERE deleted_at='0000-00-00 00:00:00'").get();

@@ -5,7 +5,7 @@ import './Hero.css'
 export default function Hero({ clock }) {
   const ref = useRef()
   const now = useTime()
-  const [userInfo, setUserInfo] = useState({ location: 'Noida, India', timezone: 'IST (UTC+5:30)' })
+  const [userInfo, setUserInfo] = useState({ location: 'Noida, India', timezone: 'IST (UTC+5:30)', salutation: 'Mr', lastname: 'Tanwar' })
 
   useEffect(() => {
     fetch('/api/user-info')
@@ -46,7 +46,7 @@ export default function Hero({ clock }) {
     <div className="hero-card" ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="hero-greet">
         <span className="live-dot" />
-        {greeting} · Live
+        {greeting}, {userInfo.salutation}. {userInfo.lastname} · Live
       </div>
       <span className="hero-scanline" aria-hidden="true" />
       <div className="hero-date">
