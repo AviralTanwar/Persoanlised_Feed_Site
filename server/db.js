@@ -388,11 +388,36 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_news_feeds (
 const { n: natFeedCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_feeds WHERE news_kpi_id = 1').get();
 if (natFeedCount === 0) {
   const insF = db.prepare('INSERT INTO tbl_news_feeds (news_kpi_id, url, name) VALUES (?, ?, ?)');
-  insF.run(1, 'https://feeds.feedburner.com/ndtvnews-india-news',         'NDTV');
-  insF.run(1, 'https://www.thehindu.com/news/national/feeder/default.rss', 'The Hindu');
-  insF.run(1, 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms','Times of India');
-  insF.run(1, 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml', 'Hindustan Times');
-  insF.run(1, 'https://www.indiatoday.in/rss/1206550',                    'India Today');
+  insF.run(1, 'https://feeds.feedburner.com/ndtvnews-india-news',              'NDTV');
+  insF.run(1, 'https://www.thehindu.com/news/national/feeder/default.rss',     'The Hindu');
+  insF.run(1, 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',    'Times of India');
+  insF.run(1, 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml','Hindustan Times');
+  insF.run(1, 'https://www.indiatoday.in/rss/1206550',                         'India Today');
+}
+
+// Seed tech news feeds (idempotent per KPI)
+const { n: techFeedCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_news_feeds WHERE news_kpi_id = 2').get();
+if (techFeedCount === 0) {
+  const insT = db.prepare('INSERT INTO tbl_news_feeds (news_kpi_id, url, name) VALUES (?, ?, ?)');
+  insT.run(2, 'https://techcrunch.com/feed/',                                'TechCrunch');
+  insT.run(2, 'https://www.theverge.com/rss/index.xml',                     'The Verge');
+  insT.run(2, 'https://feeds.arstechnica.com/arstechnica/technology-lab',   'Ars Technica');
+  insT.run(2, 'https://www.wired.com/feed/rss',                             'Wired');
+}
+
+// Migration: fix articles stored with source='Unknown' before kpiName was wired
+db.prepare(`UPDATE tbl_news_data SET source='TechCrunch' WHERE news_api_id=2 AND source='Unknown'`).run();
+db.prepare(`UPDATE tbl_news_data SET source='NDTV'       WHERE news_api_id=1 AND source='Unknown'`).run();
+
+// Migration: move onenote above improvements (swap ranks so onenote appears first)
+{
+  const on = db.prepare("SELECT id, rank FROM tbl_view_kpi WHERE section_key='onenote'").get();
+  const im = db.prepare("SELECT id, rank FROM tbl_view_kpi WHERE section_key='improvements'").get();
+  if (on && im && on.rank > im.rank) {
+    db.prepare('UPDATE tbl_view_kpi SET rank=99 WHERE id=?').run(on.id);
+    db.prepare('UPDATE tbl_view_kpi SET rank=? WHERE id=?').run(on.rank, im.id);
+    db.prepare('UPDATE tbl_view_kpi SET rank=? WHERE id=?').run(im.rank, on.id);
+  }
 }
 
 // Seed YouTube videos into tbl_notes (migrate from static/youtube_videos.json, idempotent per URL)

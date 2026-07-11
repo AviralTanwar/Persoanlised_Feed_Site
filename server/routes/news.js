@@ -16,7 +16,7 @@ function timeAgo(dateStr) {
 function decodeEntities(str) {
   if (!str) return '';
   return str
-    .replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -46,13 +46,13 @@ function parseFeed(xml, kpiName = '') {
   const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
   return blocks.map((block, i) => {
     const rawTitle = decodeEntities(tag(block, 'title'));
-    const src   = decodeEntities(tag(block, 'source'))
+    const src   = kpiName
+               || decodeEntities(tag(block, 'source'))
                || decodeEntities(tag(block, 'dc:creator'))
-               || kpiName
                || 'Unknown';
     const title = rawTitle.replace(/ - [^-]+$/, '') || rawTitle;
     const link  = tag(block, 'link').trim() || `n${i}`;
-    const desc  = stripTags(tag(block, 'description')).slice(0, 220);
+    const desc  = (stripTags(tag(block, 'description')) || stripTags(tag(block, 'content:encoded'))).slice(0, 220);
     const pubDate = tag(block, 'pubDate');
     return { id: link, title, src, desc, time: timeAgo(pubDate), url: link, newsDate: toSqliteDate(pubDate) };
   }).filter(a => a.title);

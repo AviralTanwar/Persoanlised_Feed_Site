@@ -33,8 +33,8 @@ const DEFAULT_VIEW_KPIS = [
   { id: null, section_key: 'todo',         name: 'To-Do',         rank: 5 },
   { id: null, section_key: 'web_pages',    name: 'Web Pages',     rank: 6 },
   { id: null, section_key: 'youtube',      name: 'YouTube',       rank: 7 },
-  { id: null, section_key: 'improvements', name: 'Improvements',  rank: 8 },
-  { id: null, section_key: 'onenote',      name: 'OneNote',       rank: 9 },
+  { id: null, section_key: 'onenote',      name: 'OneNote',       rank: 8 },
+  { id: null, section_key: 'improvements', name: 'Improvements',  rank: 9 },
 ]
 
 export default function App() {
