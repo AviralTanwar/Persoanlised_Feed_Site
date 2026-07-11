@@ -46,7 +46,6 @@ export default function SideNav({ active, onNav, open, onToggle, clock, theme, o
           <span className="ln" />
           <span className="ln" />
         </span>
-        <span className="nav-toggle-lbl">{open ? 'Close' : 'Menu'}</span>
       </button>
 
       {/* ── Theme toggle (top-right) ── */}

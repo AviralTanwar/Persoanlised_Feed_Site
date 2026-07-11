@@ -5,7 +5,8 @@
   left: 1.2rem;
   z-index: 120;
   height: 44px;
-  padding: 0 16px;
+  width: 44px;
+  padding: 0;
   border-radius: 22px;
   background: var(--glass-pill);
   backdrop-filter: blur(16px) saturate(1.2);
@@ -15,7 +16,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 11px;
+  justify-content: center;
   font-family: 'Space Grotesk', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -103,7 +104,7 @@
   align-items: center;
   gap: .6rem;
   padding: 0 .4rem 1.2rem;
-  padding-left: 3rem;
+  padding-left: 3.6rem;
   border-bottom: 1px solid var(--s0);
   margin-bottom: 1rem;
   margin-top: .2rem;

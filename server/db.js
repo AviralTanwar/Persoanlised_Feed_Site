@@ -7,6 +7,7 @@ const dbDir = path.join(__dirname, 'db');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
 
 const db = new Database(path.join(dbDir, 'dashboard.db'));
+db.pragma('journal_mode = WAL');
 
 // Migration: rename the old single-source table to the new multi-source name.
 // Must run BEFORE the CREATE TABLE IF NOT EXISTS below, otherwise that
@@ -370,6 +371,14 @@ if (!userCols.includes('timezone')) {
 if (!userCols.includes('salutation')) {
   db.exec(`ALTER TABLE tbl_user_info ADD COLUMN salutation TEXT DEFAULT 'Mr'`);
   db.prepare("UPDATE tbl_user_info SET salutation = 'Mr'").run();
+}
+if (!userCols.includes('tz_sign')) {
+  db.exec(`ALTER TABLE tbl_user_info ADD COLUMN tz_sign TEXT DEFAULT '+'`);
+  db.prepare("UPDATE tbl_user_info SET tz_sign = '+'").run();
+}
+if (!userCols.includes('tz_offset')) {
+  db.exec(`ALTER TABLE tbl_user_info ADD COLUMN tz_offset TEXT DEFAULT '5:30'`);
+  db.prepare("UPDATE tbl_user_info SET tz_offset = '5:30'").run();
 }
 
 // Seed onenote pages (migrate from static/onenote_pages.json, idempotent)

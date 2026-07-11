@@ -5,7 +5,11 @@ import './Hero.css'
 export default function Hero({ clock }) {
   const ref = useRef()
   const now = useTime()
-  const [userInfo, setUserInfo] = useState({ location: 'Noida, India', timezone: 'IST (UTC+5:30)', salutation: 'Mr', lastname: 'Tanwar' })
+  const [userInfo, setUserInfo] = useState({
+    location: 'Noida, India', timezone: 'IST',
+    salutation: 'Mr', lastname: 'Tanwar',
+    tz_sign: '+', tz_offset: '5:30',
+  })
 
   useEffect(() => {
     fetch('/api/user-info')
@@ -14,7 +18,12 @@ export default function Hero({ clock }) {
       .catch(() => {})
   }, [])
 
-  const hr = now.getHours()
+  // now.getTime() is always UTC ms — apply stored offset directly
+  const [offH, offM] = (userInfo.tz_offset || '5:30').split(':').map(Number)
+  const sign = userInfo.tz_sign === '-' ? -1 : 1
+  const tzNow = new Date(now.getTime() + sign * (offH * 60 + (offM || 0)) * 60000)
+
+  const hr = tzNow.getUTCHours()
   const greeting =
     hr < 5  ? 'Burning the midnight oil' :
     hr < 12 ? 'Good morning' :
@@ -22,12 +31,13 @@ export default function Hero({ clock }) {
     hr < 21 ? 'Good evening' :
               'Working late'
 
-  const timeStr = now.toLocaleTimeString('en-IN', {
+  const timeStr = tzNow.toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
     hour12: clock === '12h',
+    timeZone: 'UTC',
   })
-  const weekday = now.toLocaleDateString('en-IN', { weekday: 'long' })
-  const rest    = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+  const weekday = tzNow.toLocaleDateString('en-IN', { weekday: 'long', timeZone: 'UTC' })
+  const rest    = tzNow.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
   function onMouseMove(e) {
     const el = ref.current
@@ -54,7 +64,7 @@ export default function Hero({ clock }) {
       </div>
       <div className="hero-time">{timeStr}</div>
       <div className="hero-sub">
-        {userInfo.location || 'Noida, India'} · {userInfo.timezone || 'IST (UTC+5:30)'}
+        {userInfo.location} · {userInfo.timezone || 'IST'}
       </div>
     </div>
   )
