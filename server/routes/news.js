@@ -51,9 +51,9 @@ function parseFeed(xml, kpiName = '') {
                || decodeEntities(tag(block, 'dc:creator'))
                || 'Unknown';
     const title = rawTitle.replace(/ - [^-]+$/, '') || rawTitle;
-    const link  = tag(block, 'link').trim() || `n${i}`;
+    const link  = decodeEntities(tag(block, 'link')) || `n${i}`;
     const desc  = (stripTags(tag(block, 'description')) || stripTags(tag(block, 'content:encoded'))).slice(0, 220);
-    const pubDate = tag(block, 'pubDate');
+    const pubDate = decodeEntities(tag(block, 'pubDate'));
     return { id: link, title, src, desc, time: timeAgo(pubDate), url: link, newsDate: toSqliteDate(pubDate) };
   }).filter(a => a.title);
 }
