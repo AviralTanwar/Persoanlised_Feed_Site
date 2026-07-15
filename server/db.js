@@ -241,7 +241,7 @@ if (!viewCols.includes('section_key')) {
 
 // Seed tbl_view_kpi - all dashboard sections, idempotent by section_key
 const existingKeys = new Set(
-  db.prepare("SELECT section_key FROM tbl_view_kpi WHERE section_key != '' AND deleted_at='0000-00-00 00:00:00'")
+  db.prepare("SELECT section_key FROM tbl_view_kpi WHERE section_key != ''")
     .all().map(r => r.section_key)
 );
 const viewSeeds = [
@@ -481,6 +481,31 @@ db.prepare(`UPDATE tbl_news_data SET source='NDTV'       WHERE news_api_id=1 AND
         }
         db.prepare("UPDATE tbl_to_do_summary SET deleted_at=datetime('now') WHERE id=7").run();
       }
+    }
+  }
+}
+
+// Quotes sources — each active row (deleted_at='0000-00-00 00:00:00') is an API
+// the server can proxy to when the client requests a motivational quote.
+// view_id links back to the hero_band row in tbl_view_kpi.
+db.exec(`CREATE TABLE IF NOT EXISTS tbl_quotes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  view_id    INTEGER NOT NULL REFERENCES tbl_view_kpi(id),
+  title      TEXT    NOT NULL,
+  api        TEXT    NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT    NOT NULL DEFAULT '0000-00-00 00:00:00'
+)`);
+
+// Seed the existing motivational-spark API as the first active source
+{
+  const { n: quotesCount } = db.prepare("SELECT COUNT(*) as n FROM tbl_quotes WHERE deleted_at='0000-00-00 00:00:00'").get();
+  if (quotesCount === 0) {
+    const heroView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='hero_band' AND deleted_at='0000-00-00 00:00:00'").get();
+    if (heroView) {
+      db.prepare("INSERT INTO tbl_quotes (view_id, title, api) VALUES (?, ?, ?)")
+        .run(heroView.id, 'Motivational Spark', 'https://motivational-spark-api.vercel.app/api/quotes/random');
     }
   }
 }
