@@ -36,7 +36,9 @@ router.get('/sources', (req, res) => {
 // GET /api/quotes/:id — fetch live quote content for one specific tbl_quotes row.
 // On any upstream failure this responds with an explicit error — it never
 // fabricates a quote to paper over a broken/misconfigured api column.
-router.get('/:id(\\d+)', async (req, res) => {
+router.get('/:id', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'id must be numeric' });
+
   const row = db.prepare(
     "SELECT id, type, title, logo, color, api FROM tbl_quotes WHERE id=? AND deleted_at='0000-00-00 00:00:00'"
   ).get(req.params.id);
