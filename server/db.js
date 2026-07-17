@@ -485,12 +485,13 @@ db.prepare(`UPDATE tbl_news_data SET source='NDTV'       WHERE news_api_id=1 AND
   }
 }
 
-// Quotes sources — each active row (deleted_at='0000-00-00 00:00:00') is an API
-// the server can proxy to when the client requests a motivational quote.
+// Quotes sources — each active row is an API the server proxies.
+// type: 'motivational' | 'developer' — matches the two panels in QuoteBanner.
 // view_id links back to the hero_band row in tbl_view_kpi.
 db.exec(`CREATE TABLE IF NOT EXISTS tbl_quotes (
   id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   view_id    INTEGER NOT NULL REFERENCES tbl_view_kpi(id),
+  type       TEXT    NOT NULL DEFAULT 'motivational',
   title      TEXT    NOT NULL,
   api        TEXT    NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -498,14 +499,31 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_quotes (
   deleted_at TEXT    NOT NULL DEFAULT '0000-00-00 00:00:00'
 )`);
 
-// Seed the existing motivational-spark API as the first active source
+// Migration: add type column if table already existed without it
 {
-  const { n: quotesCount } = db.prepare("SELECT COUNT(*) as n FROM tbl_quotes WHERE deleted_at='0000-00-00 00:00:00'").get();
-  if (quotesCount === 0) {
-    const heroView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='hero_band' AND deleted_at='0000-00-00 00:00:00'").get();
-    if (heroView) {
-      db.prepare("INSERT INTO tbl_quotes (view_id, title, api) VALUES (?, ?, ?)")
-        .run(heroView.id, 'Motivational Spark', 'https://motivational-spark-api.vercel.app/api/quotes/random');
+  const qtCols = db.prepare('PRAGMA table_info(tbl_quotes)').all().map(c => c.name);
+  if (!qtCols.includes('type')) {
+    db.exec(`ALTER TABLE tbl_quotes ADD COLUMN type TEXT NOT NULL DEFAULT 'motivational'`);
+  }
+}
+
+// Seed both quote types (idempotent per type)
+{
+  const heroView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='hero_band' AND deleted_at='0000-00-00 00:00:00'").get();
+  if (heroView) {
+    const hasMotivational = db.prepare("SELECT id FROM tbl_quotes WHERE type='motivational' AND deleted_at='0000-00-00 00:00:00'").get();
+    if (!hasMotivational) {
+      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, api) VALUES (?, ?, ?, ?)")
+        .run(heroView.id, 'motivational', 'Motivational Spark', 'https://motivational-spark-api.vercel.app/api/quotes/random');
+    }
+    const hasDeveloper = db.prepare("SELECT id FROM tbl_quotes WHERE type='developer' AND deleted_at='0000-00-00 00:00:00'").get();
+    if (!hasDeveloper) {
+      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, api) VALUES (?, ?, ?, ?)")
+        .run(heroView.id, 'developer', 'Developer Excuse', 'http://developerexcuses.com/');
+    } else {
+      // Swap any pre-existing row off the old JokeAPI URL onto developerexcuses.com
+      db.prepare("UPDATE tbl_quotes SET api=?, updated_at=CURRENT_TIMESTAMP WHERE type='developer' AND deleted_at='0000-00-00 00:00:00' AND api != ?")
+        .run('http://developerexcuses.com/', 'http://developerexcuses.com/');
     }
   }
 }

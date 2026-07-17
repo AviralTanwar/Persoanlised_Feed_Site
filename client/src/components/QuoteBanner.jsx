@@ -9,51 +9,55 @@ const MOT_FALLBACK = [
   { author: 'Aristotle',        quote: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.' },
 ]
 
-// Proxied through Express so the URL stays in server/.env (never in the bundle)
-async function fetchMotivation() {
+const DEV_FALLBACK = [
+  'It works on my machine.',
+  "That's weird… it worked yesterday.",
+  "It must be a hardware problem.",
+  "The cache must be stale - try a hard refresh.",
+  "It's not a bug, it's an undocumented feature.",
+]
+
+async function fetchQuote(type) {
   try {
-    const res = await fetch('/api/quotes')
+    const res = await fetch(`/api/quotes?type=${type}`)
     if (!res.ok) throw new Error()
     const d = await res.json()
-    if (d?.quote) return { author: d.author || 'Unknown', quote: d.quote }
-    throw new Error()
+    if (!d?.quote) throw new Error()
+    return d
   } catch {
-    return MOT_FALLBACK[Math.floor(Math.random() * MOT_FALLBACK.length)]
+    if (type === 'motivational') return MOT_FALLBACK[Math.floor(Math.random() * MOT_FALLBACK.length)]
+    return { quote: DEV_FALLBACK[Math.floor(Math.random() * DEV_FALLBACK.length)], author: 'developerexcuses.com' }
   }
 }
 
-export default function QuoteBanner({ excuses }) {
+export default function QuoteBanner() {
   const ref = useRef()
-  const [excuseIdx, setExcuseIdx] = useState(() => Math.floor(Math.random() * (excuses?.length || 1)))
-  const [excuseFade, setExcuseFade] = useState(true)
-  const [quote, setQuote] = useState(null)
-  const [quoteFade, setQuoteFade] = useState(true)
-  const [loading, setLoading] = useState(true)
+  const [excuse,    setExcuse]    = useState(null)
+  const [quote,     setQuote]     = useState(null)
+  const [excuseFade,  setExcuseFade]  = useState(true)
+  const [quoteFade,   setQuoteFade]   = useState(true)
+  const [loading,   setLoading]   = useState(true)
 
-  async function loadQuote() {
-    const q = await fetchMotivation()
-    setQuote(q)
+  async function loadBoth() {
+    const [dev, mot] = await Promise.all([fetchQuote('developer'), fetchQuote('motivational')])
+    setExcuse(dev)
+    setQuote(mot)
     setLoading(false)
+    setExcuseFade(true)
     setQuoteFade(true)
   }
 
   function shuffle() {
     setExcuseFade(false)
     setQuoteFade(false)
-    setTimeout(() => {
-      setExcuseIdx(i => ((i + 1) % (excuses?.length || 1)))
-      setExcuseFade(true)
-    }, 200)
-    loadQuote()
+    setTimeout(loadBoth, 200)
   }
 
-  useEffect(() => { loadQuote() }, [])
+  useEffect(() => { loadBoth() }, [])
   useEffect(() => {
     const id = setInterval(shuffle, 12000)
     return () => clearInterval(id)
-  }, [excuses])
-
-  const excuse = excuses?.[excuseIdx] ?? '…'
+  }, [])
 
   function onMouseMove(e) {
     const el = ref.current
@@ -72,8 +76,10 @@ export default function QuoteBanner({ excuses }) {
     <div className="quote-card" ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="quote-block">
         <div className="quote-label dev">⚡ Developer Excuse</div>
-        <div className="quote-txt" style={{ opacity: excuseFade ? 1 : 0 }}>"{excuse}"</div>
-        <div className="quote-src">- via developerexcuses.com</div>
+        <div className="quote-txt" style={{ opacity: (excuseFade && !loading) ? 1 : 0.35 }}>
+          {loading ? 'Loading excuse…' : `"${excuse?.quote ?? ''}"`}
+        </div>
+        <div className="quote-src">- {excuse?.author || 'developerexcuses.com'}</div>
       </div>
 
       <div className="quote-div" />
@@ -81,7 +87,7 @@ export default function QuoteBanner({ excuses }) {
       <div className="quote-block">
         <div className="quote-label mot">✦ Motivational Spark</div>
         <div className="quote-txt" style={{ opacity: (quoteFade && !loading) ? 1 : 0.35 }}>
-          {loading && !quote ? 'Summoning some motivation…' : `"${quote?.quote ?? ''}"`}
+          {loading ? 'Summoning some motivation…' : `"${quote?.quote ?? ''}"`}
         </div>
         <div className="quote-src">- {quote?.author ?? '…'}</div>
       </div>

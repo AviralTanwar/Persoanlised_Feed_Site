@@ -43,7 +43,6 @@ export default function App() {
   const [navOpen, setNavOpen]           = useState(false)
   const [activeSection, setActiveSection] = useState('weather')
   const [tweaksOpen, setTweaksOpen]     = useState(false)
-  const [excuses, setExcuses]           = useState([])
   const [viewKpis, setViewKpis]         = useState(DEFAULT_VIEW_KPIS)
   const sectionRefs = useRef({})
 
@@ -51,11 +50,6 @@ export default function App() {
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
     window.scrollTo(0, 0)
-  }, [])
-
-  // ── Load excuses ──
-  useEffect(() => {
-    fetch('/api/static/excuses').then(r => r.json()).then(setExcuses)
   }, [])
 
   // ── Load view KPI order + names ──
@@ -144,7 +138,7 @@ export default function App() {
         return (
           <div key={kpi.section_key} className="hero-band reveal">
             <Hero clock={tweaks.clock} />
-            <QuoteBanner excuses={excuses} />
+            <QuoteBanner />
           </div>
         )
       case 'weather':
