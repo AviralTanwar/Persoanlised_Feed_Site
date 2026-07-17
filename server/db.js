@@ -493,37 +493,53 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_quotes (
   view_id    INTEGER NOT NULL REFERENCES tbl_view_kpi(id),
   type       TEXT    NOT NULL DEFAULT 'motivational',
   title      TEXT    NOT NULL,
+  logo       TEXT    NOT NULL DEFAULT '💬',
+  color      TEXT    NOT NULL DEFAULT 'accent',
   api        TEXT    NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TEXT    NOT NULL DEFAULT '0000-00-00 00:00:00'
 )`);
 
-// Migration: add type column if table already existed without it
+// Migration: add type/logo/color columns if table already existed without them
 {
   const qtCols = db.prepare('PRAGMA table_info(tbl_quotes)').all().map(c => c.name);
   if (!qtCols.includes('type')) {
     db.exec(`ALTER TABLE tbl_quotes ADD COLUMN type TEXT NOT NULL DEFAULT 'motivational'`);
   }
+  if (!qtCols.includes('logo')) {
+    db.exec(`ALTER TABLE tbl_quotes ADD COLUMN logo TEXT NOT NULL DEFAULT '💬'`);
+  }
+  if (!qtCols.includes('color')) {
+    db.exec(`ALTER TABLE tbl_quotes ADD COLUMN color TEXT NOT NULL DEFAULT 'accent'`);
+  }
 }
 
-// Seed both quote types (idempotent per type)
+// Seed both quote types (idempotent per type) — title, logo, color and api
+// are ALL sourced from this table; QuoteBanner has no hardcoded per-type styling.
 {
   const heroView = db.prepare("SELECT id FROM tbl_view_kpi WHERE section_key='hero_band' AND deleted_at='0000-00-00 00:00:00'").get();
   if (heroView) {
     const hasMotivational = db.prepare("SELECT id FROM tbl_quotes WHERE type='motivational' AND deleted_at='0000-00-00 00:00:00'").get();
     if (!hasMotivational) {
-      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, api) VALUES (?, ?, ?, ?)")
-        .run(heroView.id, 'motivational', 'Motivational Spark', 'https://motivational-spark-api.vercel.app/api/quotes/random');
+      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, logo, color, api) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(heroView.id, 'motivational', 'Motivational Spark', '✦', 'accent2', 'https://motivational-spark-api.vercel.app/api/quotes/random');
+    } else {
+      // Backfill logo/color on rows created before those columns existed
+      db.prepare("UPDATE tbl_quotes SET logo='✦', color='accent2', updated_at=CURRENT_TIMESTAMP WHERE type='motivational' AND deleted_at='0000-00-00 00:00:00' AND (logo='💬' OR color='accent')")
+        .run();
     }
     const hasDeveloper = db.prepare("SELECT id FROM tbl_quotes WHERE type='developer' AND deleted_at='0000-00-00 00:00:00'").get();
     if (!hasDeveloper) {
-      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, api) VALUES (?, ?, ?, ?)")
-        .run(heroView.id, 'developer', 'Developer Excuse', 'http://developerexcuses.com/');
+      db.prepare("INSERT INTO tbl_quotes (view_id, type, title, logo, color, api) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(heroView.id, 'developer', 'Developer Excuse', '⚡', 'accent', 'http://developerexcuses.com/');
     } else {
-      // Swap any pre-existing row off the old JokeAPI URL onto developerexcuses.com
+      // Swap any pre-existing row off the old JokeAPI URL onto developerexcuses.com,
+      // and backfill logo/color on rows created before those columns existed
       db.prepare("UPDATE tbl_quotes SET api=?, updated_at=CURRENT_TIMESTAMP WHERE type='developer' AND deleted_at='0000-00-00 00:00:00' AND api != ?")
         .run('http://developerexcuses.com/', 'http://developerexcuses.com/');
+      db.prepare("UPDATE tbl_quotes SET logo='⚡', color='accent', updated_at=CURRENT_TIMESTAMP WHERE type='developer' AND deleted_at='0000-00-00 00:00:00' AND logo='💬'")
+        .run();
     }
   }
 }

@@ -39,9 +39,6 @@
   gap: .45rem;
   white-space: nowrap;
 }
-.quote-label.dev { color: var(--accent); }
-.quote-label.mot { color: var(--accent2); }
-
 .quote-txt {
   font-size: 1.06rem;
   font-weight: 600;

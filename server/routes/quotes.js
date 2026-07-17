@@ -18,13 +18,16 @@ function scrapeExcuse(html) {
 }
 
 // GET /api/quotes?type=motivational|developer
+// Response includes title/logo/color from tbl_quotes so the panel's label,
+// icon and accent are fully DB-driven — QuoteBanner has no per-type hardcoding.
 router.get('/', async (req, res) => {
   const type = req.query.type || 'motivational';
   const row  = db.prepare(
-    "SELECT api FROM tbl_quotes WHERE type=? AND deleted_at='0000-00-00 00:00:00' ORDER BY RANDOM() LIMIT 1"
+    "SELECT title, logo, color, api FROM tbl_quotes WHERE type=? AND deleted_at='0000-00-00 00:00:00' ORDER BY RANDOM() LIMIT 1"
   ).get(type);
 
   if (!row) return res.status(503).json({ error: `No active ${type} quote source in tbl_quotes` });
+  const meta = { title: row.title, logo: row.logo, color: row.color };
 
   try {
     const upstream = await fetch(row.api, { cache: 'no-store' });
@@ -39,16 +42,16 @@ router.get('/', async (req, res) => {
     }
 
     if (!result.quote) throw new Error('Could not parse a quote from upstream response');
-    res.json(result);
+    res.json({ ...result, ...meta });
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    res.status(502).json({ error: err.message, ...meta });
   }
 });
 
 // GET /api/quotes/sources — list all rows
 router.get('/sources', (req, res) => {
   res.json(db.prepare(
-    'SELECT id, view_id, type, title, api, deleted_at, created_at, updated_at FROM tbl_quotes ORDER BY id'
+    'SELECT id, view_id, type, title, logo, color, api, deleted_at, created_at, updated_at FROM tbl_quotes ORDER BY id'
   ).all());
 });
 
