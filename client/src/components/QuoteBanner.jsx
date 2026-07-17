@@ -1,76 +1,45 @@
 import { useState, useEffect, useRef } from 'react'
 import './QuoteBanner.css'
 
-// Only used if the API call fails outright (network/server down) — title,
-// logo and color still come from tbl_quotes on every successful response.
-const FALLBACK = {
-  motivational: {
-    title: 'Motivational Spark', logo: '✦', color: 'accent2',
-    quotes: [
-      { author: 'Steve Jobs',       quote: 'Innovation distinguishes between a leader and a follower.' },
-      { author: 'Peter Drucker',    quote: 'The best way to predict the future is to create it.' },
-      { author: 'Confucius',        quote: 'It does not matter how slowly you go as long as you do not stop.' },
-      { author: 'Albert Einstein',  quote: 'A person who never made a mistake never tried anything new.' },
-      { author: 'Aristotle',        quote: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.' },
-    ],
-  },
-  developer: {
-    title: 'Developer Excuse', logo: '⚡', color: 'accent',
-    quotes: [
-      'It works on my machine.',
-      "That's weird… it worked yesterday.",
-      "It must be a hardware problem.",
-      "The cache must be stale - try a hard refresh.",
-      "It's not a bug, it's an undocumented feature.",
-    ],
-  },
-}
+// One panel is rendered per active row returned by /api/quotes/active — the
+// row count in tbl_quotes IS the panel count, nothing here is hardcoded to
+// "developer"/"motivational". A failed fetch shows the real error instead of
+// a fabricated quote, so a broken `api` column is visible, not masked.
+async function loadPanels() {
+  const activeRes = await fetch('/api/quotes/active')
+  const rows = activeRes.ok ? await activeRes.json() : []
 
-async function fetchQuote(type) {
-  try {
-    const res = await fetch(`/api/quotes?type=${type}`)
-    if (!res.ok) throw new Error()
-    const d = await res.json()
-    if (!d?.quote) throw new Error()
-    return d
-  } catch {
-    const fb = FALLBACK[type]
-    if (type === 'motivational') {
-      const q = fb.quotes[Math.floor(Math.random() * fb.quotes.length)]
-      return { ...q, title: fb.title, logo: fb.logo, color: fb.color }
+  return Promise.all(rows.map(async row => {
+    try {
+      const res = await fetch(`/api/quotes/${row.id}`)
+      const d = await res.json()
+      if (!res.ok || !d?.quote) throw new Error(d?.error || 'Unknown error')
+      return { ...row, quote: d.quote, author: d.author, error: null }
+    } catch (err) {
+      return { ...row, quote: null, author: null, error: err.message }
     }
-    return {
-      quote: fb.quotes[Math.floor(Math.random() * fb.quotes.length)],
-      author: 'developerexcuses.com',
-      title: fb.title, logo: fb.logo, color: fb.color,
-    }
-  }
+  }))
 }
 
 export default function QuoteBanner() {
   const ref = useRef()
-  const [excuse,    setExcuse]    = useState(null)
-  const [quote,     setQuote]     = useState(null)
-  const [excuseFade,  setExcuseFade]  = useState(true)
-  const [quoteFade,   setQuoteFade]   = useState(true)
-  const [loading,   setLoading]   = useState(true)
+  const [panels, setPanels]   = useState([])
+  const [fade, setFade]       = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  async function loadBoth() {
-    const [dev, mot] = await Promise.all([fetchQuote('developer'), fetchQuote('motivational')])
-    setExcuse(dev)
-    setQuote(mot)
+  async function load() {
+    const p = await loadPanels()
+    setPanels(p)
     setLoading(false)
-    setExcuseFade(true)
-    setQuoteFade(true)
+    setFade(true)
   }
 
   function shuffle() {
-    setExcuseFade(false)
-    setQuoteFade(false)
-    setTimeout(loadBoth, 200)
+    setFade(false)
+    setTimeout(load, 200)
   }
 
-  useEffect(() => { loadBoth() }, [])
+  useEffect(() => { load() }, [])
   useEffect(() => {
     const id = setInterval(shuffle, 12000)
     return () => clearInterval(id)
@@ -91,30 +60,33 @@ export default function QuoteBanner() {
 
   return (
     <div className="quote-card" ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
-      <div className="quote-block">
-        <div className="quote-label" style={{ color: `var(--${excuse?.color || 'accent'})` }}>
-          {excuse?.logo || '⚡'} {excuse?.title || 'Developer Excuse'}
+      {panels.length === 0 && !loading && (
+        <div className="quote-block">
+          <div className="quote-txt" style={{ opacity: 0.6 }}>No active quote sources in tbl_quotes.</div>
         </div>
-        <div className="quote-txt" style={{ opacity: (excuseFade && !loading) ? 1 : 0.35 }}>
-          {loading ? 'Loading excuse…' : `"${excuse?.quote ?? ''}"`}
-        </div>
-        <div className="quote-src">- {excuse?.author || 'developerexcuses.com'}</div>
-      </div>
+      )}
 
-      <div className="quote-div" />
-
-      <div className="quote-block">
-        <div className="quote-label" style={{ color: `var(--${quote?.color || 'accent2'})` }}>
-          {quote?.logo || '✦'} {quote?.title || 'Motivational Spark'}
+      {panels.map((p, i) => (
+        <div key={p.id}>
+          <div className="quote-block">
+            <div className="quote-label" style={{ color: `var(--${p.color || 'accent'})` }}>
+              {p.logo || '💬'} {p.title}
+            </div>
+            <div className="quote-txt" style={{ opacity: (fade && !loading) ? 1 : 0.35 }}>
+              {loading
+                ? 'Loading…'
+                : p.error
+                  ? `⚠ ${p.error}`
+                  : `"${p.quote}"`}
+            </div>
+            <div className="quote-src">- {loading ? '…' : (p.error ? `source: ${p.title}` : (p.author || p.title))}</div>
+          </div>
+          {i < panels.length - 1 && <div className="quote-div" />}
         </div>
-        <div className="quote-txt" style={{ opacity: (quoteFade && !loading) ? 1 : 0.35 }}>
-          {loading ? 'Summoning some motivation…' : `"${quote?.quote ?? ''}"`}
-        </div>
-        <div className="quote-src">- {quote?.author ?? '…'}</div>
-      </div>
+      ))}
 
       <div className="quote-foot">
-        <button className="btn-g" onClick={shuffle}>🎲 Shuffle both</button>
+        <button className="btn-g" onClick={shuffle}>🎲 Shuffle all</button>
       </div>
     </div>
   )

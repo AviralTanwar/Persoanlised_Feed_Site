@@ -17,17 +17,32 @@ function scrapeExcuse(html) {
   return { quote: match ? match[1].trim() : '', author: 'developerexcuses.com' };
 }
 
-// GET /api/quotes?type=motivational|developer
-// Response includes title/logo/color from tbl_quotes so the panel's label,
-// icon and accent are fully DB-driven — QuoteBanner has no per-type hardcoding.
-router.get('/', async (req, res) => {
-  const type = req.query.type || 'motivational';
-  const row  = db.prepare(
-    "SELECT title, logo, color, api FROM tbl_quotes WHERE type=? AND deleted_at='0000-00-00 00:00:00' ORDER BY RANDOM() LIMIT 1"
-  ).get(type);
+// GET /api/quotes/active — every active row's display metadata (no api url exposed).
+// This is what makes the number of panels on the dashboard equal to the number
+// of active rows in tbl_quotes — the frontend renders one block per row returned here.
+router.get('/active', (req, res) => {
+  res.json(db.prepare(
+    "SELECT id, type, title, logo, color FROM tbl_quotes WHERE deleted_at='0000-00-00 00:00:00' ORDER BY id"
+  ).all());
+});
 
-  if (!row) return res.status(503).json({ error: `No active ${type} quote source in tbl_quotes` });
-  const meta = { title: row.title, logo: row.logo, color: row.color };
+// GET /api/quotes/sources — list all rows (admin/debug view, includes api + soft-deleted)
+router.get('/sources', (req, res) => {
+  res.json(db.prepare(
+    'SELECT id, view_id, type, title, logo, color, api, deleted_at, created_at, updated_at FROM tbl_quotes ORDER BY id'
+  ).all());
+});
+
+// GET /api/quotes/:id — fetch live quote content for one specific tbl_quotes row.
+// On any upstream failure this responds with an explicit error — it never
+// fabricates a quote to paper over a broken/misconfigured api column.
+router.get('/:id(\\d+)', async (req, res) => {
+  const row = db.prepare(
+    "SELECT id, type, title, logo, color, api FROM tbl_quotes WHERE id=? AND deleted_at='0000-00-00 00:00:00'"
+  ).get(req.params.id);
+
+  if (!row) return res.status(404).json({ error: `No active quote source with id=${req.params.id}` });
+  const meta = { id: row.id, title: row.title, logo: row.logo, color: row.color };
 
   try {
     const upstream = await fetch(row.api, { cache: 'no-store' });
@@ -36,23 +51,16 @@ router.get('/', async (req, res) => {
 
     let result;
     if (contentType.includes('application/json')) {
-      result = normalise(await upstream.json(), type);
+      result = normalise(await upstream.json(), row.type);
     } else {
       result = scrapeExcuse(await upstream.text());
     }
 
-    if (!result.quote) throw new Error('Could not parse a quote from upstream response');
+    if (!result.quote) throw new Error(`api (${row.api}) returned no parseable quote`);
     res.json({ ...result, ...meta });
   } catch (err) {
     res.status(502).json({ error: err.message, ...meta });
   }
-});
-
-// GET /api/quotes/sources — list all rows
-router.get('/sources', (req, res) => {
-  res.json(db.prepare(
-    'SELECT id, view_id, type, title, logo, color, api, deleted_at, created_at, updated_at FROM tbl_quotes ORDER BY id'
-  ).all());
 });
 
 module.exports = router;
