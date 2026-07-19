@@ -17,6 +17,12 @@ if (tableNames.includes('tbl_national_news') && !tableNames.includes('tbl_news_d
   db.exec('ALTER TABLE tbl_national_news RENAME TO tbl_news_data');
 }
 
+// Migration: rename weathers → tbl_weathers_card (naming convention; the api
+// source now lives separately in tbl_weathers)
+if (tableNames.includes('weathers') && !tableNames.includes('tbl_weathers_card')) {
+  db.exec('ALTER TABLE weathers RENAME TO tbl_weathers_card');
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS interactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,15 +43,6 @@ db.exec(`
     page_url TEXT NOT NULL,
     text TEXT NOT NULL,
     colour TEXT DEFAULT 'yellow',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS improvement_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    detail TEXT DEFAULT '',
-    priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
-    status TEXT CHECK(status IN ('pending', 'in_progress', 'done')) DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -184,14 +181,26 @@ db.exec(`
     deleted_at  TEXT     NOT NULL DEFAULT '0000-00-00 00:00:00'
   );
 
-  CREATE TABLE IF NOT EXISTS weathers (
+  -- Weather city cards shown on the dashboard (renamed from "weathers")
+  CREATE TABLE IF NOT EXISTS tbl_weathers_card (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     city TEXT NOT NULL,
     country TEXT NOT NULL DEFAULT 'IN',
     units TEXT NOT NULL DEFAULT 'metric',
     permanent INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME DEFAULT NULL
+  );
+
+  -- Weather API source(s) — each active row is an upstream weather.js proxies.
+  CREATE TABLE IF NOT EXISTS tbl_weathers (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name       TEXT    NOT NULL,
+    api        TEXT    NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT    NOT NULL DEFAULT '0000-00-00 00:00:00'
   );
 
   -- Personal notes pages (markdown-based scratchpad, replaces static onenote_pages.json)
@@ -206,10 +215,16 @@ db.exec(`
   );
 `);
 
-// Migration: rename improvement_notes → tbl_improvements (naming convention)
+// Migration: rename improvement_notes → tbl_improvements (naming convention),
+// or drop it outright if tbl_improvements already exists — it was a dead
+// table recreated + reseeded on every startup with no route ever reading it.
 const allTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
-if (allTables.includes('improvement_notes') && !allTables.includes('tbl_improvements')) {
-  db.exec('ALTER TABLE improvement_notes RENAME TO tbl_improvements');
+if (allTables.includes('improvement_notes')) {
+  if (!allTables.includes('tbl_improvements')) {
+    db.exec('ALTER TABLE improvement_notes RENAME TO tbl_improvements');
+  } else {
+    db.exec('DROP TABLE improvement_notes');
+  }
 }
 // Create tbl_improvements if it doesn't exist at all (fresh install)
 db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
@@ -318,31 +333,31 @@ if (kpiCount === 0) {
 
 
 
+// Migration: add updated_at to tbl_weathers_card if upgrading from the old "weathers" schema
+{
+  const cardCols = db.prepare('PRAGMA table_info(tbl_weathers_card)').all().map(c => c.name);
+  if (!cardCols.includes('updated_at')) {
+    db.exec(`ALTER TABLE tbl_weathers_card ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  }
+}
+
 // Seed permanent cities on first run - these used to live in static/config.json
-const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM weathers').get();
+const { n: weatherCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_weathers_card').get();
 if (weatherCount === 0) {
   const insertCity = db.prepare(
-    'INSERT INTO weathers (city, country, units, permanent) VALUES (?, ?, ?, 1)'
+    'INSERT INTO tbl_weathers_card (city, country, units, permanent) VALUES (?, ?, ?, 1)'
   );
   insertCity.run('Noida', 'IN', 'metric');
   insertCity.run('Greater Noida', 'IN', 'metric');
 }
 
-// Seed improvements on first run
-const { n } = db.prepare('SELECT COUNT(*) as n FROM improvement_notes').get();
-if (n === 0) {
-  const insert = db.prepare(
-    'INSERT INTO improvement_notes (title, detail, priority, status) VALUES (?, ?, ?, ?)'
-  );
-  const seeds = [
-    ['Master React Server Components', 'RSC patterns, Suspense, streaming SSR. React 19 RFC + Next.js 15 docs.', 'high', 'in_progress'],
-    ['Daily DSA - 2 Problems / Day', 'Graphs and dynamic programming. NeetCode 150.', 'high', 'pending'],
-    ['Migrate Dashboard - FastAPI + React', 'Follow README roadmap. FastAPI endpoints first, then migrate frontend.', 'high', 'pending'],
-    ['Read Designing Data-Intensive Applications', 'Chapter 7+ - consistency models and replication strategies.', 'medium', 'in_progress'],
-    ['Morning run - 5 km daily', 'Build from 3 km over 2 weeks. Before 6:30 AM.', 'medium', 'pending'],
-  ];
-  for (const row of seeds) insert.run(...row);
+// Seed the weather API source on first run
+const { n: weatherApiCount } = db.prepare("SELECT COUNT(*) as n FROM tbl_weathers WHERE deleted_at='0000-00-00 00:00:00'").get();
+if (weatherApiCount === 0) {
+  db.prepare('INSERT INTO tbl_weathers (name, api) VALUES (?, ?)')
+    .run('OpenWeatherMap', 'https://api.openweathermap.org/data/2.5/weather');
 }
+
 
 // Seed user profile on first run
 const { n: userCount } = db.prepare('SELECT COUNT(*) as n FROM tbl_user_info').get();

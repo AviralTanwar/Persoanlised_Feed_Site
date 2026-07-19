@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../db');
 
 router.get('/', async (req, res) => {
   const { city, country = 'IN', units = 'metric' } = req.query;
@@ -8,7 +9,12 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'city is required' });
   }
 
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${city},${country}&units=${units}&appid=${process.env.OPENWEATHER_API_KEY}`;
+  const source = db.prepare(
+    "SELECT api FROM tbl_weathers WHERE deleted_at='0000-00-00 00:00:00' ORDER BY id LIMIT 1"
+  ).get();
+  if (!source) return res.status(503).json({ error: 'No active weather source in tbl_weathers' });
+
+  const url = `${source.api}?q=${city},${country}&units=${units}&appid=${process.env.OPENWEATHER_API_KEY}`;
 
   try {
     const response = await fetch(url);
