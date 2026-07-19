@@ -49,6 +49,24 @@ export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }
   const [editingNote,   setEditingNote]   = useState(null)
   const [editNoteDraft, setEditNoteDraft] = useState({ title: '', description: '', content: '' })
 
+  // Embed strategy per page: 'direct' iframes the url as-is; 'proxy' routes it
+  // through /api/proxy which strips X-Frame-Options / frame-ancestors so
+  // sites that forbid embedding still render. isPdf drops the sandbox attr —
+  // Chrome's sandbox is what blocks its built-in PDF viewer.
+  const [embed, setEmbed] = useState({ mode: 'direct', isPdf: false })
+
+  useEffect(() => {
+    if (!activePage) return
+    setEmbed({ mode: 'direct', isPdf: false })
+    fetch(`/api/proxy/check?url=${encodeURIComponent(activePage.url)}`)
+      .then(r => r.json())
+      .then(d => setEmbed({
+        mode: (d.frameBlocked || !d.ok) ? 'proxy' : 'direct',
+        isPdf: !!d.isPdf,
+      }))
+      .catch(() => {})
+  }, [activePage?.id])
+
   useEffect(() => {
     fetch('/api/user-info').then(r => r.json()).then(setUser).catch(() => {})
   }, [])
@@ -377,17 +395,27 @@ export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }
               <div className="wp-content-topbar">
                 <span className="wp-content-title">{activePage.title}</span>
                 <div className="wp-content-actions">
+                  <button
+                    className="wp-tb-btn"
+                    title={embed.mode === 'proxy'
+                      ? 'Embedded via server proxy (site blocks direct iframes) — click for direct'
+                      : 'Embedded directly — click to force proxy mode'}
+                    onClick={() => setEmbed(e => ({ ...e, mode: e.mode === 'proxy' ? 'direct' : 'proxy' }))}>
+                    {embed.mode === 'proxy' ? '🛡 Proxied' : '🔗 Direct'}
+                  </button>
                   <a href={activePage.url} target="_blank" rel="noreferrer" className="wp-external-link">↗ New tab</a>
                   <button className="wp-close-btn" onClick={() => setActivePage(null)}>✕ Close</button>
                 </div>
               </div>
               <div className="wp-iframe-wrap">
                 <iframe
-                  key={activePage.id}
-                  src={activePage.url}
+                  key={`${activePage.id}-${embed.mode}`}
+                  src={embed.mode === 'proxy'
+                    ? `/api/proxy?url=${encodeURIComponent(activePage.url)}`
+                    : activePage.url}
                   title={activePage.title}
                   className="wp-iframe"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  {...(embed.isPdf ? {} : { sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups' })}
                 />
               </div>
             </div>
