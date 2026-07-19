@@ -337,7 +337,8 @@ if (kpiCount === 0) {
 {
   const cardCols = db.prepare('PRAGMA table_info(tbl_weathers_card)').all().map(c => c.name);
   if (!cardCols.includes('updated_at')) {
-    db.exec(`ALTER TABLE tbl_weathers_card ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+    db.exec(`ALTER TABLE tbl_weathers_card ADD COLUMN updated_at DATETIME`);
+    db.exec(`UPDATE tbl_weathers_card SET updated_at = created_at`);
   }
 }
 
