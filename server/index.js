@@ -24,5 +24,6 @@ app.use('/api/notes',          require('./routes/notes'));
 app.use('/api/onenote',        require('./routes/onenote'));
 app.use('/api/view-kpis',      require('./routes/viewKpis'));
 app.use('/api/proxy',          require('./routes/proxy'));
+app.use('/api/web-page-downloads', require('./routes/webPageDownloads'));
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

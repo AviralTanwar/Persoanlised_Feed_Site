@@ -11,6 +11,17 @@ const BROWSER_HEADERS = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
+// What a real browser sends when loading an <iframe> — some WAFs (e.g. MDPI's
+// Akamai) return 403 specifically to these, while allowing plain requests.
+// The check must send them or it reports "frameable" for pages the browser
+// will actually see as Access Denied.
+const IFRAME_FETCH_HEADERS = {
+  ...BROWSER_HEADERS,
+  'Sec-Fetch-Dest': 'iframe',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'cross-site',
+};
+
 function validUrl(raw) {
   try {
     const u = new URL(raw);
@@ -24,7 +35,7 @@ router.get('/check', async (req, res) => {
   if (!u) return res.status(400).json({ error: 'valid http(s) url required' });
 
   try {
-    const r = await fetch(u, { headers: BROWSER_HEADERS, redirect: 'follow' });
+    const r = await fetch(u, { headers: IFRAME_FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(8000) });
     const xfo  = (r.headers.get('x-frame-options') || '').toLowerCase();
     const csp  = (r.headers.get('content-security-policy') || '').toLowerCase();
     const type = r.headers.get('content-type') || '';
@@ -35,23 +46,27 @@ router.get('/check', async (req, res) => {
       status: r.status,
       contentType: type,
       isPdf: type.includes('application/pdf') || u.pathname.toLowerCase().endsWith('.pdf'),
-      frameBlocked: xfo.includes('deny') || xfo.includes('sameorigin') || csp.includes('frame-ancestors'),
+      frameBlocked: !r.ok || xfo.includes('deny') || xfo.includes('sameorigin') || csp.includes('frame-ancestors'),
     });
   } catch (err) {
     res.json({ ok: false, status: 0, frameBlocked: true, error: err.message });
   }
 });
 
-// GET /api/proxy?url= — fetch the page and re-serve it without frame-blocking headers
+// GET /api/proxy?url= — fetch the page and re-serve it without frame-blocking headers.
+// Pass &scripts=1 to keep the page's JavaScript (default: stripped, because
+// blocked sites' scripts typically redirect the frame to a login/authwall URL
+// that is itself frame-blocked — Chrome then shows "blocked" over the content).
 router.get('/', async (req, res) => {
   const u = validUrl(req.query.url);
   if (!u) return res.status(400).send('valid http(s) url required');
 
   let upstream;
   try {
-    upstream = await fetch(u, { headers: BROWSER_HEADERS, redirect: 'follow' });
+    upstream = await fetch(u, { headers: BROWSER_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(20000) });
   } catch (err) {
-    return res.status(502).send(errorPage(u, `Could not reach site: ${err.message}`));
+    const msg = err.name === 'TimeoutError' ? 'Site took too long to respond (20s timeout).' : `Could not reach site: ${err.message}`;
+    return res.status(502).send(errorPage(u, msg));
   }
 
   const type = upstream.headers.get('content-type') || 'application/octet-stream';
@@ -62,11 +77,25 @@ router.get('/', async (req, res) => {
 
   if (type.includes('text/html')) {
     let html = await upstream.text();
+
+    // Akamai serves a JS bot-challenge interstitial instead of the page when
+    // it suspects automation. It can't be solved server-side — say so honestly.
+    if (html.includes('/akamai/interstitial')) {
+      return res.status(502).send(errorPage(u, "This site's firewall is showing a bot-verification challenge that only a real browser tab can pass."));
+    }
+
+    if (req.query.scripts !== '1') {
+      html = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<meta[^>]+http-equiv=["']?refresh["']?[^>]*>/gi, '');
+    }
+
     // <base> makes every relative/root-relative asset resolve against the
-    // ORIGINAL site, so styles/images/scripts load from there, not from us.
+    // ORIGINAL site, so styles/images load from there, not from us.
     const base = `<base href="${u.href.replace(/"/g, '&quot;')}">`;
     if (/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, m => `${m}\n${base}`);
     else html = base + html;
+
     res.set('Content-Type', type);
     return res.send(html);
   }

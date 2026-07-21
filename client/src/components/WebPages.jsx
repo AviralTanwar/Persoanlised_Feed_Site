@@ -53,19 +53,39 @@ export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }
   // through /api/proxy which strips X-Frame-Options / frame-ancestors so
   // sites that forbid embedding still render. isPdf drops the sandbox attr —
   // Chrome's sandbox is what blocks its built-in PDF viewer.
-  const [embed, setEmbed] = useState({ mode: 'direct', isPdf: false })
+  //
+  // Proxy is the DEFAULT for regular pages: some WAFs (MDPI/Akamai) 403 real
+  // browser iframes while passing every server-side check, so "direct when it
+  // looks fine" still breaks. Direct is used for PDFs and session-based Google
+  // apps, and a manual toggle is remembered per page in localStorage.
+  const APP_DOMAINS = ['docs.google.com', 'drive.google.com', 'calendar.google.com', 'mail.google.com']
+  const [embed, setEmbed] = useState({ mode: 'proxy', isPdf: false })
 
   useEffect(() => {
     if (!activePage) return
-    setEmbed({ mode: 'direct', isPdf: false })
+    const saved = localStorage.getItem(`wp_embed_${activePage.id}`)
+    setEmbed({ mode: saved || 'proxy', isPdf: /\.pdf(\?|$)/i.test(activePage.url) })
     fetch(`/api/proxy/check?url=${encodeURIComponent(activePage.url)}`)
       .then(r => r.json())
-      .then(d => setEmbed({
-        mode: (d.frameBlocked || !d.ok) ? 'proxy' : 'direct',
-        isPdf: !!d.isPdf,
-      }))
+      .then(d => {
+        if (saved) { setEmbed(e => ({ ...e, isPdf: !!d.isPdf })); return }
+        let host = ''
+        try { host = new URL(activePage.url).hostname } catch { /* keep '' */ }
+        let mode = 'proxy'
+        if (d.isPdf) mode = d.frameBlocked ? 'proxy' : 'direct'
+        else if (!d.frameBlocked && APP_DOMAINS.includes(host)) mode = 'direct'
+        setEmbed({ mode, isPdf: !!d.isPdf })
+      })
       .catch(() => {})
   }, [activePage?.id])
+
+  function toggleEmbedMode() {
+    setEmbed(e => {
+      const mode = e.mode === 'proxy' ? 'direct' : 'proxy'
+      if (activePage) localStorage.setItem(`wp_embed_${activePage.id}`, mode)
+      return { ...e, mode }
+    })
+  }
 
   useEffect(() => {
     fetch('/api/user-info').then(r => r.json()).then(setUser).catch(() => {})
@@ -400,7 +420,7 @@ export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }
                     title={embed.mode === 'proxy'
                       ? 'Embedded via server proxy (site blocks direct iframes) — click for direct'
                       : 'Embedded directly — click to force proxy mode'}
-                    onClick={() => setEmbed(e => ({ ...e, mode: e.mode === 'proxy' ? 'direct' : 'proxy' }))}>
+                    onClick={toggleEmbedMode}>
                     {embed.mode === 'proxy' ? '🛡 Proxied' : '🔗 Direct'}
                   </button>
                   <a href={activePage.url} target="_blank" rel="noreferrer" className="wp-external-link">↗ New tab</a>
@@ -415,7 +435,14 @@ export default function WebPages({ viewKpi = {}, theme = 'dark', onThemeToggle }
                     : activePage.url}
                   title={activePage.title}
                   className="wp-iframe"
-                  {...(embed.isPdf ? {} : { sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups' })}
+                  {...(embed.isPdf
+                    ? {}
+                    : { sandbox: embed.mode === 'proxy'
+                        // no allow-scripts in proxy mode — blocked sites' JS tries to
+                        // redirect the frame to a login/authwall that is itself
+                        // frame-blocked, which Chrome renders as a blocked page
+                        ? 'allow-same-origin allow-forms allow-popups'
+                        : 'allow-scripts allow-same-origin allow-forms allow-popups' })}
                 />
               </div>
             </div>

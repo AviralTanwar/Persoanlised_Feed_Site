@@ -560,4 +560,18 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_quotes (
   }
 }
 
+// Uploaded files (PDFs) attached to a web page. The bytes live in the `data`
+// BLOB column; note_id links to the tbl_notes web_page row it belongs to.
+db.exec(`CREATE TABLE IF NOT EXISTS tbl_web_pge_downloads (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  note_id    INTEGER REFERENCES tbl_notes(id),
+  filename   TEXT    NOT NULL,
+  mime_type  TEXT    NOT NULL DEFAULT 'application/pdf',
+  size_bytes INTEGER NOT NULL DEFAULT 0,
+  data       BLOB    NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT    NOT NULL DEFAULT '0000-00-00 00:00:00'
+)`);
+
 module.exports = db;
