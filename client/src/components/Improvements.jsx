@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import './Improvements.css'
 
 const COLUMNS = [
-  { key: 'pending',     label: 'Pending',     emoji: '⬜', color: 'var(--blue)'  },
-  { key: 'in_progress', label: 'In Progress', emoji: '🔶', color: 'var(--peach)' },
-  { key: 'done',        label: 'Implemented', emoji: '✅', color: 'var(--green)' },
+  { key: 'pending',     label: 'Pending',     emoji: '⬜', color: 'var(--blue)'   },
+  { key: 'in_progress', label: 'In Progress', emoji: '🔶', color: 'var(--peach)'  },
+  { key: 'hold',        label: 'On Hold',     emoji: '⏸️', color: 'var(--yellow)' },
+  { key: 'done',        label: 'Implemented', emoji: '✅', color: 'var(--green)'  },
 ]
 const PRIORITY = {
   high:   { color: '#ef4444', bg: 'rgba(239,68,68,0.10)',  border: '#ef4444', label: '🔴 High'   },
@@ -28,6 +29,7 @@ export default function Improvements() {
   const [hoveredId, setHoveredId] = useState(null)
   const [draggingId, setDraggingId] = useState(null)
   const [dragOverCol, setDragOverCol] = useState(null)
+  const [remarkDraft, setRemarkDraft] = useState({})
   const addInputRef = useRef(null)
 
   useEffect(() => {
@@ -79,12 +81,24 @@ export default function Improvements() {
 
   function openEdit(item) {
     setEditing(item)
-    setEditDraft({ title: item.title, detail: item.detail || '', priority: item.priority, status: item.status })
+    setEditDraft({ title: item.title, detail: item.detail || '', remark: item.remark || '', priority: item.priority, status: item.status })
   }
   async function saveEdit() { await patch(editing.id, editDraft); setEditing(null) }
 
+  // ── Remark (inline, always visible on the card) ──────────────────────────
+  function saveRemark(item) {
+    const draft = remarkDraft[item.id]
+    if (draft !== undefined && draft !== (item.remark || '')) {
+      patch(item.id, { remark: draft })
+    }
+    setRemarkDraft(d => { const n = { ...d }; delete n[item.id]; return n })
+  }
+
   // ── Drag & Drop ──────────────────────────────────────────────────────────
   function onDragStart(e, id) {
+    // Don't start a drag when the pointer is in the remark box or a button —
+    // let the user select/edit text instead.
+    if (['INPUT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) { e.preventDefault(); return }
     e.dataTransfer.setData('impId', String(id))
     e.dataTransfer.effectAllowed = 'move'
     setTimeout(() => setDraggingId(id), 0)
@@ -188,6 +202,20 @@ export default function Improvements() {
                                 >{item.is_kpi ? '⭐' : '☆'}</button>
                               </div>
 
+                              {/* Always-visible remark — editable without hovering */}
+                              <div className="imp-card-remark" onMouseDown={e => e.stopPropagation()}>
+                                <span className="imp-remark-icon">📝</span>
+                                <textarea
+                                  className="imp-remark-inline"
+                                  placeholder="Add a remark…"
+                                  rows={1}
+                                  value={remarkDraft[item.id] ?? item.remark ?? ''}
+                                  onChange={e => setRemarkDraft(d => ({ ...d, [item.id]: e.target.value }))}
+                                  onBlur={() => saveRemark(item)}
+                                  onClick={e => e.stopPropagation()}
+                                />
+                              </div>
+
                               {isHov && (
                                 <div className="imp-card-expand">
                                   {item.detail && <p className="imp-card-detail">{item.detail}</p>}
@@ -276,6 +304,12 @@ export default function Improvements() {
                 <label>Details</label>
                 <textarea className="imp-inline-textarea" rows={4} value={editDraft.detail}
                   onChange={e => setEditDraft(d => ({ ...d, detail: e.target.value }))} />
+              </div>
+              <div className="imp-field">
+                <label>📝 Remark</label>
+                <textarea className="imp-inline-textarea" rows={2} value={editDraft.remark}
+                  placeholder="Add a remark…"
+                  onChange={e => setEditDraft(d => ({ ...d, remark: e.target.value }))} />
               </div>
               <div className="imp-field-row">
                 <div className="imp-field">

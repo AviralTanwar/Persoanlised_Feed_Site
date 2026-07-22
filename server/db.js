@@ -231,8 +231,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   detail TEXT DEFAULT '',
+  remark TEXT DEFAULT '',
   priority TEXT CHECK(priority IN ('low','medium','high')) DEFAULT 'medium',
-  status TEXT CHECK(status IN ('pending','in_progress','done')) DEFAULT 'pending',
+  status TEXT CHECK(status IN ('pending','in_progress','hold','done')) DEFAULT 'pending',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
@@ -241,6 +242,39 @@ db.exec(`CREATE TABLE IF NOT EXISTS tbl_improvements (
   const impCols = db.prepare('PRAGMA table_info(tbl_improvements)').all().map(c => c.name);
   if (!impCols.includes('is_kpi')) {
     db.exec(`ALTER TABLE tbl_improvements ADD COLUMN is_kpi INTEGER NOT NULL DEFAULT 0 CHECK(is_kpi IN (0, 1))`);
+  }
+}
+
+// Migration: add remark column (a note shown directly on the improvement card)
+{
+  const impCols = db.prepare('PRAGMA table_info(tbl_improvements)').all().map(c => c.name);
+  if (!impCols.includes('remark')) {
+    db.exec(`ALTER TABLE tbl_improvements ADD COLUMN remark TEXT DEFAULT ''`);
+  }
+}
+
+// Migration: widen the status CHECK to allow 'hold'. SQLite can't ALTER a CHECK
+// constraint, so rebuild the table only if the current definition lacks 'hold'.
+{
+  const impSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='tbl_improvements'").get().sql;
+  if (!impSql.includes("'hold'")) {
+    const rebuild = db.transaction(() => {
+      db.exec(`CREATE TABLE tbl_improvements_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        detail TEXT DEFAULT '',
+        remark TEXT DEFAULT '',
+        priority TEXT CHECK(priority IN ('low','medium','high')) DEFAULT 'medium',
+        status TEXT CHECK(status IN ('pending','in_progress','hold','done')) DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_kpi INTEGER NOT NULL DEFAULT 0 CHECK(is_kpi IN (0, 1))
+      )`);
+      db.exec(`INSERT INTO tbl_improvements_new (id, title, detail, remark, priority, status, created_at, is_kpi)
+               SELECT id, title, detail, COALESCE(remark,''), priority, status, created_at, is_kpi FROM tbl_improvements`);
+      db.exec('DROP TABLE tbl_improvements');
+      db.exec('ALTER TABLE tbl_improvements_new RENAME TO tbl_improvements');
+    });
+    rebuild();
   }
 }
 
