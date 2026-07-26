@@ -1,29 +1,5 @@
-const express = require('express');
-const cors    = require('cors');
-require('dotenv').config();
-
-const app  = express();
+// Local development entry point only. On Vercel the app is served as a
+// serverless function via api/index.js, which imports the same app.js.
+const app = require('./app');
 const PORT = process.env.PORT || 3001;
-
-app.use(cors());
-app.use(express.json());
-
-app.use('/api/weather',        require('./routes/weather'));
-app.use('/api/weather-cities', require('./routes/weatherCities'));
-app.use('/api/news',           require('./routes/news'));
-app.use('/api/news-kpis',      require('./routes/newsKpis'));
-app.use('/api/reactions',      require('./routes/newsInteractions'));
-app.use('/api/static',         require('./routes/staticData'));
-app.use('/api/quotes',         require('./routes/quotes'));
-app.use('/api/improvements',   require('./routes/improvements'));
-app.use('/api/user-info',      require('./routes/userInfo'));
-app.use('/api/credentials',    require('./routes/credentials'));
-app.use('/api/todo-summaries', require('./routes/todoSummaries'));
-app.use('/api/todos',          require('./routes/todos'));
-app.use('/api/notes',          require('./routes/notes'));
-app.use('/api/onenote',        require('./routes/onenote'));
-app.use('/api/view-kpis',      require('./routes/viewKpis'));
-app.use('/api/proxy',          require('./routes/proxy'));
-app.use('/api/web-page-downloads', require('./routes/webPageDownloads'));
-
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

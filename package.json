@@ -1,0 +1,17 @@
+{
+  "name": "api-explorer-dashboard",
+  "version": "1.0.0",
+  "description": "API Explorer Dashboard - Express API + React client, deployed on Vercel with Supabase Postgres",
+  "private": true,
+  "scripts": {
+    "dev:server": "node server/index.js",
+    "dev:client": "cd client && npm run dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}
