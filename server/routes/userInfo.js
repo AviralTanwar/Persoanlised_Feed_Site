@@ -1,28 +1,42 @@
 const express = require('express');
 const router  = express.Router();
-const db      = require('../db');
+const supabase = require('../db');
 
-const SELECT = "SELECT user_id, firstname, lastname, username, title, location, timezone, salutation, tz_sign, tz_offset FROM tbl_user_info WHERE active = 1 AND deleted_at = '0000-00-00 00:00:00' LIMIT 1";
+const ACTIVE = '0000-00-00 00:00:00';
+const COLS = 'user_id, firstname, lastname, username, title, location, timezone, salutation, tz_sign, tz_offset';
 
-router.get('/', (req, res) => {
-  const user = db.prepare(SELECT).get();
-  if (!user) return res.status(404).json({ error: 'No user' });
-  res.json(user);
+async function getUser() {
+  return supabase
+    .from('tbl_user_info')
+    .select(COLS)
+    .eq('active', 1)
+    .eq('deleted_at', ACTIVE)
+    .limit(1)
+    .maybeSingle();
+}
+
+router.get('/', async (req, res) => {
+  const { data, error } = await getUser();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'No user' });
+  res.json(data);
 });
 
-router.patch('/', (req, res) => {
-  const { firstname, lastname, username, title, location, timezone, salutation, tz_sign, tz_offset } = req.body;
-  db.prepare(`UPDATE tbl_user_info SET
-    firstname=COALESCE(?,firstname), lastname=COALESCE(?,lastname),
-    username=COALESCE(?,username), title=COALESCE(?,title),
-    location=COALESCE(?,location), timezone=COALESCE(?,timezone),
-    salutation=COALESCE(?,salutation),
-    tz_sign=COALESCE(?,tz_sign), tz_offset=COALESCE(?,tz_offset),
-    updated_at=CURRENT_TIMESTAMP WHERE active=1 AND deleted_at='0000-00-00 00:00:00'`)
-    .run(firstname??null, lastname??null, username??null, title??null,
-         location??null, timezone??null, salutation??null,
-         tz_sign??null, tz_offset??null);
-  res.json(db.prepare(SELECT).get() || { error: 'No user' });
+router.patch('/', async (req, res) => {
+  const fields = ['firstname', 'lastname', 'username', 'title', 'location', 'timezone', 'salutation', 'tz_sign', 'tz_offset'];
+  const patch = { updated_at: new Date().toISOString() };
+  for (const f of fields) if (req.body[f] !== undefined) patch[f] = req.body[f];
+
+  const { error: upErr } = await supabase
+    .from('tbl_user_info')
+    .update(patch)
+    .eq('active', 1)
+    .eq('deleted_at', ACTIVE);
+  if (upErr) return res.status(500).json({ error: upErr.message });
+
+  const { data, error } = await getUser();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || { error: 'No user' });
 });
 
 module.exports = router;

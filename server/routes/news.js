@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../db');
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -70,27 +70,59 @@ function dbRowToArticle(row) {
   };
 }
 
+// Page through PostgREST's 1000-row cap to collect all matching `link`s.
+async function fetchExcludedLinks(kpiId) {
+  const PAGE = 1000;
+  let from = 0;
+  const links = new Set();
+  for (;;) {
+    const { data, error } = await supabase
+      .from('tbl_news_data')
+      .select('link')
+      .eq('news_api_id', kpiId)
+      .is('deleted_at', null)
+      .gte('shown', 3)
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    for (const r of data) links.add(r.link);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return links;
+}
+
 const CACHE_TTL_MS    = 15 * 60 * 1000;
 const NO_FRESH_TTL_MS = 2 * 60 * 1000;
 const cacheByKpi   = new Map();
 const noFreshUntil = new Map();
 
-router.get('/:kpiId/old', (req, res) => {
+router.get('/:kpiId/old', async (req, res) => {
   const kpiId = Number(req.params.kpiId);
   const count = Math.min(Number(req.query.count) || 30, 100);
   // Return everything ever seen for this KPI - both reacted and unreacted -
   // except articles that are currently live on screen (already in the main panel).
-  const rows = db.prepare(`
-    SELECT * FROM tbl_news_data
-    WHERE news_api_id = ? AND deleted_at IS NULL AND NOT (response = 0 AND live = 1)
-    ORDER BY updated_at DESC LIMIT ?
-  `).all(kpiId, count);
-  res.json(rows.map(dbRowToArticle));
+  // NOT (response=0 AND live=1)  ≡  response≠0 OR live≠1
+  const { data, error } = await supabase
+    .from('tbl_news_data')
+    .select('*')
+    .eq('news_api_id', kpiId)
+    .is('deleted_at', null)
+    .or('response.neq.0,live.neq.1')
+    .order('updated_at', { ascending: false })
+    .limit(count);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data.map(dbRowToArticle));
 });
 
 router.get('/:kpiId', async (req, res) => {
   const kpiId = Number(req.params.kpiId);
-  const kpi = db.prepare('SELECT * FROM tbl_news_kpi_data WHERE id = ? AND deleted_at IS NULL').get(kpiId);
+  const { data: kpi, error: kpiErr } = await supabase
+    .from('tbl_news_kpi_data')
+    .select('*')
+    .eq('id', kpiId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (kpiErr) return res.status(500).json({ error: kpiErr.message });
   if (!kpi) return res.status(404).json({ error: 'Unknown news KPI' });
   if (!kpi.live) return res.status(403).json({ error: 'This news KPI is not live' });
 
@@ -98,10 +130,14 @@ router.get('/:kpiId', async (req, res) => {
 
   // Reset stale live=1 flags for unreacted articles — if the tab was closed or crashed,
   // those flags never got cleared and would permanently block the article pool.
-  db.prepare(`
-    UPDATE tbl_news_data SET live = 0, updated_at = CURRENT_TIMESTAMP
-    WHERE news_api_id = ? AND live = 1 AND response = 0 AND deleted_at IS NULL
-  `).run(kpiId);
+  const { error: updErr } = await supabase
+    .from('tbl_news_data')
+    .update({ live: 0, updated_at: new Date().toISOString() })
+    .eq('news_api_id', kpiId)
+    .eq('live', 1)
+    .eq('response', 0)
+    .is('deleted_at', null);
+  if (updErr) return res.status(500).json({ error: updErr.message });
 
   try {
     const cached = cacheByKpi.get(kpiId);
@@ -110,7 +146,12 @@ router.get('/:kpiId', async (req, res) => {
     }
 
     if ((noFreshUntil.get(kpiId) || 0) <= Date.now()) {
-      const feeds = db.prepare('SELECT * FROM tbl_news_feeds WHERE news_kpi_id = ? AND live = 1').all(kpiId);
+      const { data: feeds, error: feedErr } = await supabase
+        .from('tbl_news_feeds')
+        .select('*')
+        .eq('news_kpi_id', kpiId)
+        .eq('live', 1);
+      if (feedErr) return res.status(500).json({ error: feedErr.message });
       const feedList = feeds.length > 0 ? feeds : [{ url: kpi.api_url, name: kpi.name }];
 
       const fetchResults = await Promise.allSettled(
@@ -131,19 +172,9 @@ router.get('/:kpiId', async (req, res) => {
         .flatMap(r => r.value)
         .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true; });
 
-      // "Fresh" = never appeared in this feed before. Any article already in the DB
-      // has been seen (markLive inserts it the moment it hits the screen).
-      // Liked/disliked/swiped all stay excluded. New RSS articles that weren't in DB
-      // are always fresh. When the whole feed is known → exhausted state.
       // Only permanently exclude articles the user explicitly acted on:
       // shown=3 liked, shown=4 disliked, shown=5 swiped/skipped.
-      // Articles just viewed (shown=0/1/2) re-appear as fresh on the next load.
-      const excluded = new Set(
-        db.prepare(`
-          SELECT link FROM tbl_news_data
-          WHERE news_api_id = ? AND deleted_at IS NULL AND shown >= 3
-        `).all(kpiId).map(r => r.link)
-      );
+      const excluded = await fetchExcludedLinks(kpiId);
       const fresh = articles.filter(a => !excluded.has(a.id));
 
       if (fresh.length > 0) {
@@ -154,8 +185,6 @@ router.get('/:kpiId', async (req, res) => {
     }
 
     // No fresh news - tell the client to show the "seen everything" state.
-    // Old/previously-seen articles are served separately via /:kpiId/old
-    // only when the user explicitly clicks "Review old news".
     res.json({ tier: 'exhausted', articles: [] });
   } catch (err) {
     res.status(502).json({ error: err.message || 'Failed to fetch news' });

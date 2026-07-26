@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../db');
 
 router.get('/', async (req, res) => {
   const { city, country = 'IN', units = 'metric' } = req.query;
@@ -9,9 +9,14 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ error: 'city is required' });
   }
 
-  const source = db.prepare(
-    "SELECT api FROM tbl_weathers WHERE deleted_at='0000-00-00 00:00:00' ORDER BY id LIMIT 1"
-  ).get();
+  const { data: source, error: srcErr } = await supabase
+    .from('tbl_weathers')
+    .select('api')
+    .eq('deleted_at', '0000-00-00 00:00:00')
+    .order('id')
+    .limit(1)
+    .maybeSingle();
+  if (srcErr) return res.status(500).json({ error: srcErr.message });
   if (!source) return res.status(503).json({ error: 'No active weather source in tbl_weathers' });
 
   const url = `${source.api}?q=${city},${country}&units=${units}&appid=${process.env.OPENWEATHER_API_KEY}`;

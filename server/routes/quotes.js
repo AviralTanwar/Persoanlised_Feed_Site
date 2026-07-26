@@ -1,6 +1,8 @@
 const express = require('express');
 const router  = express.Router();
-const db      = require('../db');
+const supabase = require('../db');
+
+const ACTIVE = '0000-00-00 00:00:00';
 
 // Different upstream APIs use different field names — normalise to { quote, author }
 function normalise(data, type) {
@@ -20,17 +22,24 @@ function scrapeExcuse(html) {
 // GET /api/quotes/active — every active row's display metadata (no api url exposed).
 // This is what makes the number of panels on the dashboard equal to the number
 // of active rows in tbl_quotes — the frontend renders one block per row returned here.
-router.get('/active', (req, res) => {
-  res.json(db.prepare(
-    "SELECT id, type, title, logo, color FROM tbl_quotes WHERE deleted_at='0000-00-00 00:00:00' ORDER BY id"
-  ).all());
+router.get('/active', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tbl_quotes')
+    .select('id, type, title, logo, color')
+    .eq('deleted_at', ACTIVE)
+    .order('id');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // GET /api/quotes/sources — list all rows (admin/debug view, includes api + soft-deleted)
-router.get('/sources', (req, res) => {
-  res.json(db.prepare(
-    'SELECT id, view_id, type, title, logo, color, api, deleted_at, created_at, updated_at FROM tbl_quotes ORDER BY id'
-  ).all());
+router.get('/sources', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tbl_quotes')
+    .select('id, view_id, type, title, logo, color, api, deleted_at, created_at, updated_at')
+    .order('id');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // GET /api/quotes/:id — fetch live quote content for one specific tbl_quotes row.
@@ -39,11 +48,15 @@ router.get('/sources', (req, res) => {
 router.get('/:id', async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'id must be numeric' });
 
-  const row = db.prepare(
-    "SELECT id, type, title, logo, color, api FROM tbl_quotes WHERE id=? AND deleted_at='0000-00-00 00:00:00'"
-  ).get(req.params.id);
-
+  const { data: row, error } = await supabase
+    .from('tbl_quotes')
+    .select('id, type, title, logo, color, api')
+    .eq('id', Number(req.params.id))
+    .eq('deleted_at', ACTIVE)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
   if (!row) return res.status(404).json({ error: `No active quote source with id=${req.params.id}` });
+
   const meta = { id: row.id, title: row.title, logo: row.logo, color: row.color };
 
   try {

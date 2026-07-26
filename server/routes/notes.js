@@ -1,92 +1,122 @@
 const express = require('express');
 const router  = express.Router();
-const db      = require('../db');
+const supabase = require('../db');
+
+const ACTIVE = '0000-00-00 00:00:00';
 
 // ── tbl_notes (entity wrappers) ───────────────────────────────────────────
 
 // GET /api/notes?entityType=web_page&entityId=<url>
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { entityType, entityId, viewId } = req.query;
-  let rows;
+  let query = supabase.from('tbl_notes').select('*').eq('deleted_at', ACTIVE);
+
   if (entityType && entityId) {
-    rows = db.prepare(
-      "SELECT * FROM tbl_notes WHERE entity_type=? AND entity_id=? AND deleted_at='0000-00-00 00:00:00' ORDER BY created_at ASC"
-    ).all(entityType, entityId);
+    query = query.eq('entity_type', entityType).eq('entity_id', entityId).order('created_at', { ascending: true });
   } else if (entityType) {
-    rows = db.prepare(
-      "SELECT * FROM tbl_notes WHERE entity_type=? AND deleted_at='0000-00-00 00:00:00' ORDER BY updated_at DESC"
-    ).all(entityType);
+    query = query.eq('entity_type', entityType).order('updated_at', { ascending: false });
   } else if (viewId) {
-    rows = db.prepare(
-      "SELECT * FROM tbl_notes WHERE view_id=? AND deleted_at='0000-00-00 00:00:00' ORDER BY updated_at DESC"
-    ).all(Number(viewId));
+    query = query.eq('view_id', Number(viewId)).order('updated_at', { ascending: false });
   } else {
-    rows = db.prepare(
-      "SELECT * FROM tbl_notes WHERE deleted_at='0000-00-00 00:00:00' ORDER BY created_at DESC"
-    ).all();
+    query = query.order('created_at', { ascending: false });
   }
-  res.json(rows);
+
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.post('/', (req, res) => {
-  const { entity_type, entity_id, view_id, title='', description='', url='' } = req.body;
+router.post('/', async (req, res) => {
+  const { entity_type, entity_id, view_id, title = '', description = '', url = '' } = req.body;
   if (!entity_type || !entity_id || !view_id) {
     return res.status(400).json({ error: 'entity_type, entity_id and view_id required' });
   }
-  const info = db.prepare(
-    'INSERT INTO tbl_notes (entity_type, entity_id, view_id, title, description, url) VALUES (?,?,?,?,?,?)'
-  ).run(entity_type, String(entity_id), Number(view_id), title, description, url);
-  res.json(db.prepare('SELECT * FROM tbl_notes WHERE id=?').get(info.lastInsertRowid));
+  const { data, error } = await supabase
+    .from('tbl_notes')
+    .insert({ entity_type, entity_id: String(entity_id), view_id: Number(view_id), title, description, url })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const { title, description, url } = req.body;
-  db.prepare(`UPDATE tbl_notes SET
-    title=COALESCE(?,title), description=COALESCE(?,description),
-    url=COALESCE(?,url), updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-    .run(title??null, description??null, url??null, Number(req.params.id));
-  res.json(db.prepare('SELECT * FROM tbl_notes WHERE id=?').get(Number(req.params.id)));
+  const patch = { updated_at: new Date().toISOString() };
+  if (title !== undefined)       patch.title = title;
+  if (description !== undefined) patch.description = description;
+  if (url !== undefined)         patch.url = url;
+
+  const { data, error } = await supabase
+    .from('tbl_notes')
+    .update(patch)
+    .eq('id', Number(req.params.id))
+    .select()
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.delete('/:id', (req, res) => {
-  db.prepare(
-    "UPDATE tbl_notes SET deleted_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?"
-  ).run(Number(req.params.id));
+router.delete('/:id', async (req, res) => {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('tbl_notes')
+    .update({ deleted_at: now, updated_at: now })
+    .eq('id', Number(req.params.id));
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 
 // ── tbl_notes_data (content entries per note entity) ─────────────────────
 
 // GET /api/notes/:notesId/data
-router.get('/:notesId/data', (req, res) => {
-  const rows = db.prepare(
-    "SELECT * FROM tbl_notes_data WHERE entity_id=? AND deleted_at='0000-00-00 00:00:00' ORDER BY created_at ASC"
-  ).all(Number(req.params.notesId));
-  res.json(rows);
+router.get('/:notesId/data', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tbl_notes_data')
+    .select('*')
+    .eq('entity_id', Number(req.params.notesId))
+    .eq('deleted_at', ACTIVE)
+    .order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.post('/:notesId/data', (req, res) => {
-  const { title='', description='', content='' } = req.body;
+router.post('/:notesId/data', async (req, res) => {
+  const { title = '', description = '', content = '' } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'content required' });
-  const info = db.prepare(
-    'INSERT INTO tbl_notes_data (entity_id, title, description, content) VALUES (?,?,?,?)'
-  ).run(Number(req.params.notesId), title, description, content.trim());
-  res.json(db.prepare('SELECT * FROM tbl_notes_data WHERE id=?').get(info.lastInsertRowid));
+  const { data, error } = await supabase
+    .from('tbl_notes_data')
+    .insert({ entity_id: Number(req.params.notesId), title, description, content: content.trim() })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.patch('/data/:id', (req, res) => {
+router.patch('/data/:id', async (req, res) => {
   const { title, description, content } = req.body;
-  db.prepare(`UPDATE tbl_notes_data SET
-    title=COALESCE(?,title), description=COALESCE(?,description), content=COALESCE(?,content),
-    updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-    .run(title??null, description??null, content??null, Number(req.params.id));
-  res.json(db.prepare('SELECT * FROM tbl_notes_data WHERE id=?').get(Number(req.params.id)));
+  const patch = { updated_at: new Date().toISOString() };
+  if (title !== undefined)       patch.title = title;
+  if (description !== undefined) patch.description = description;
+  if (content !== undefined)     patch.content = content;
+
+  const { data, error } = await supabase
+    .from('tbl_notes_data')
+    .update(patch)
+    .eq('id', Number(req.params.id))
+    .select()
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.delete('/data/:id', (req, res) => {
-  db.prepare(
-    "UPDATE tbl_notes_data SET deleted_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?"
-  ).run(Number(req.params.id));
+router.delete('/data/:id', async (req, res) => {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('tbl_notes_data')
+    .update({ deleted_at: now, updated_at: now })
+    .eq('id', Number(req.params.id));
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 

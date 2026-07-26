@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../db');
 
 const MAX_CITIES = 6;
 
@@ -17,38 +17,63 @@ const SUGGESTIONS = [
   { city: 'Kolkata',    country: 'IN' },
 ];
 
-router.get('/', (req, res) => {
-  const cities = db.prepare(
-    'SELECT * FROM tbl_weathers_card WHERE deleted_at IS NULL ORDER BY permanent DESC, id ASC'
-  ).all();
-  res.json({ cities, max: MAX_CITIES, suggestions: SUGGESTIONS });
+// tbl_weathers_card uses NULL (not the string sentinel) for "not deleted".
+router.get('/', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tbl_weathers_card')
+    .select('*')
+    .is('deleted_at', null)
+    .order('permanent', { ascending: false })
+    .order('id', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ cities: data, max: MAX_CITIES, suggestions: SUGGESTIONS });
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { city, country = 'IN', units = 'metric' } = req.body;
   if (!city || !city.trim()) return res.status(400).json({ error: 'city is required' });
 
-  const { n } = db.prepare('SELECT COUNT(*) as n FROM tbl_weathers_card WHERE deleted_at IS NULL').get();
-  if (n >= MAX_CITIES) return res.status(400).json({ error: `Maximum of ${MAX_CITIES} cities reached` });
+  const { count, error: cErr } = await supabase
+    .from('tbl_weathers_card')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null);
+  if (cErr) return res.status(500).json({ error: cErr.message });
+  if (count >= MAX_CITIES) return res.status(400).json({ error: `Maximum of ${MAX_CITIES} cities reached` });
 
-  const exists = db.prepare(
-    'SELECT id FROM tbl_weathers_card WHERE city = ? AND deleted_at IS NULL'
-  ).get(city.trim());
+  const { data: exists, error: eErr } = await supabase
+    .from('tbl_weathers_card')
+    .select('id')
+    .eq('city', city.trim())
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (eErr) return res.status(500).json({ error: eErr.message });
   if (exists) return res.status(409).json({ error: 'City already added' });
 
-  const info = db.prepare(
-    'INSERT INTO tbl_weathers_card (city, country, units, permanent) VALUES (?, ?, ?, 0)'
-  ).run(city.trim(), country, units);
-
-  res.status(201).json(db.prepare('SELECT * FROM tbl_weathers_card WHERE id = ?').get(info.lastInsertRowid));
+  const { data, error } = await supabase
+    .from('tbl_weathers_card')
+    .insert({ city: city.trim(), country, units, permanent: 0 })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
 });
 
-router.delete('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM tbl_weathers_card WHERE id = ? AND deleted_at IS NULL').get(req.params.id);
+router.delete('/:id', async (req, res) => {
+  const { data: row, error: rErr } = await supabase
+    .from('tbl_weathers_card')
+    .select('*')
+    .eq('id', Number(req.params.id))
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (rErr) return res.status(500).json({ error: rErr.message });
   if (!row) return res.status(404).json({ error: 'City not found' });
   if (row.permanent) return res.status(403).json({ error: 'This city is permanent and cannot be removed' });
 
-  db.prepare('UPDATE tbl_weathers_card SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
+  const { error } = await supabase
+    .from('tbl_weathers_card')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', Number(req.params.id));
+  if (error) return res.status(500).json({ error: error.message });
   res.status(204).end();
 });
 

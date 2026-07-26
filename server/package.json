@@ -1,20 +1,11 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "API Explorer Dashboard - Express server",
+  "description": "API Explorer Dashboard - Express API (runtime deps live in the repo-root package.json)",
   "main": "index.js",
+  "private": true,
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.9.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1"
   }
 }

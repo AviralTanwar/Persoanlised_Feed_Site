@@ -1,36 +1,55 @@
 const express = require('express');
 const router  = express.Router();
-const db      = require('../db');
+const supabase = require('../db');
 
-router.get('/', (req, res) => {
-  const rows = db.prepare(
-    "SELECT * FROM tbl_onenote_pages WHERE deleted_at='0000-00-00 00:00:00' ORDER BY updated_at DESC"
-  ).all();
-  res.json(rows);
+const ACTIVE = '0000-00-00 00:00:00';
+
+router.get('/', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tbl_onenote_pages')
+    .select('*')
+    .eq('deleted_at', ACTIVE)
+    .order('updated_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { notebook_name = 'Dev Notes', title, body = '' } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title required' });
-  const info = db.prepare(
-    'INSERT INTO tbl_onenote_pages (notebook_name, title, body) VALUES (?,?,?)'
-  ).run(notebook_name.trim(), title.trim(), body);
-  res.status(201).json(db.prepare('SELECT * FROM tbl_onenote_pages WHERE id=?').get(info.lastInsertRowid));
+  const { data, error } = await supabase
+    .from('tbl_onenote_pages')
+    .insert({ notebook_name: notebook_name.trim(), title: title.trim(), body })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const { notebook_name, title, body } = req.body;
-  db.prepare(`UPDATE tbl_onenote_pages SET
-    notebook_name=COALESCE(?,notebook_name), title=COALESCE(?,title),
-    body=COALESCE(?,body), updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-    .run(notebook_name ?? null, title ?? null, body ?? null, Number(req.params.id));
-  res.json(db.prepare('SELECT * FROM tbl_onenote_pages WHERE id=?').get(Number(req.params.id)));
+  const patch = { updated_at: new Date().toISOString() };
+  if (notebook_name !== undefined) patch.notebook_name = notebook_name;
+  if (title !== undefined)         patch.title = title;
+  if (body !== undefined)          patch.body = body;
+
+  const { data, error } = await supabase
+    .from('tbl_onenote_pages')
+    .update(patch)
+    .eq('id', Number(req.params.id))
+    .select()
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
-router.delete('/:id', (req, res) => {
-  db.prepare(
-    "UPDATE tbl_onenote_pages SET deleted_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?"
-  ).run(Number(req.params.id));
+router.delete('/:id', async (req, res) => {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('tbl_onenote_pages')
+    .update({ deleted_at: now, updated_at: now })
+    .eq('id', Number(req.params.id));
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 

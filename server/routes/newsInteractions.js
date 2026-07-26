@@ -1,28 +1,45 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../db');
 
-// GET all interactions as a map: { [link]: { headline, source, summary, response, link_open, ... } }
-// Optional ?kpiId= scopes to one news source.
-router.get('/', (req, res) => {
+// PostgREST returns at most 1000 rows per request; page through to get all.
+async function fetchAllReactions(kpiId) {
+  const PAGE = 1000;
+  let from = 0;
+  const all = [];
+  for (;;) {
+    let q = supabase.from('tbl_news_data').select('*').is('deleted_at', null);
+    if (kpiId != null) q = q.eq('news_api_id', kpiId);
+    const { data, error } = await q.range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    all.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+// GET all interactions as a map: { [link]: {...row} }. Optional ?kpiId= scopes it.
+router.get('/', async (req, res) => {
   const kpiId = req.query.kpiId ? Number(req.query.kpiId) : null;
-  const rows = kpiId
-    ? db.prepare('SELECT * FROM tbl_news_data WHERE deleted_at IS NULL AND news_api_id = ?').all(kpiId)
-    : db.prepare('SELECT * FROM tbl_news_data WHERE deleted_at IS NULL').all();
-  const map = {};
-  for (const r of rows) map[r.link] = r;
-  res.json(map);
+  try {
+    const rows = await fetchAllReactions(kpiId);
+    const map = {};
+    for (const r of rows) map[r.link] = r;
+    res.json(map);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST upsert - accepts partial updates.
-// news_api_id: which tbl_news_kpi_data row this article came from (set once, on first insert).
-// response: -1 dislike, 0 skipped, 1 liked.
-// link_open: 1 once the article link has been opened.
-// clicked_on_more: 1 once the "more" description toggle has been expanded.
-// live: 1 while the article is currently rendered on the dashboard, 0 once it leaves screen.
-// news_date: the article's actual publish date (set once, on first insert).
-// shown: most recent interaction code - 0 displayed/none, 1 link, 2 more, 3 like, 4 dislike, 5 removed.
-router.post('/', (req, res) => {
+const coalesce = (a, b) => (a != null ? a : b);
+
+// POST upsert on `link`. supabase-js upsert() replaces columns, but the old SQL
+// preserved some via COALESCE, so we read the existing row and merge by hand:
+//   • headline/source/summary  → always take the incoming value
+//   • news_api_id / news_date   → set once (keep existing if already set)
+//   • response/link_open/clicked_on_more/live/shown → update if provided, else keep
+router.post('/', async (req, res) => {
   const {
     link, headline, source = '', summary = '', news_api_id = null,
     response = null, link_open = null, clicked_on_more = null,
@@ -30,28 +47,51 @@ router.post('/', (req, res) => {
   } = req.body;
   if (!link || !headline) return res.status(400).json({ error: 'link and headline required' });
 
-  db.prepare(`
-    INSERT INTO tbl_news_data
-      (link, headline, source, summary, news_api_id, response, link_open, clicked_on_more, live, news_date, shown, updated_at)
-    VALUES
-      (@link, @headline, @source, @summary, @news_api_id, COALESCE(@response, 0), COALESCE(@link_open, 0),
-       COALESCE(@clicked_on_more, 0), COALESCE(@live, 1), @news_date, COALESCE(@shown, 0), CURRENT_TIMESTAMP)
-    ON CONFLICT(link) DO UPDATE SET
-      headline        = excluded.headline,
-      source          = excluded.source,
-      summary         = excluded.summary,
-      news_api_id     = COALESCE(tbl_news_data.news_api_id, @news_api_id),
-      response        = COALESCE(@response, tbl_news_data.response),
-      link_open       = COALESCE(@link_open, tbl_news_data.link_open),
-      clicked_on_more = COALESCE(@clicked_on_more, tbl_news_data.clicked_on_more),
-      live            = COALESCE(@live, tbl_news_data.live),
-      news_date       = COALESCE(tbl_news_data.news_date, @news_date),
-      shown           = COALESCE(@shown, tbl_news_data.shown),
-      updated_at      = CURRENT_TIMESTAMP
-  `).run({ link, headline, source, summary, news_api_id, response, link_open, clicked_on_more, live, news_date, shown });
+  try {
+    const { data: existing, error: selErr } = await supabase
+      .from('tbl_news_data').select('*').eq('link', link).maybeSingle();
+    if (selErr) throw new Error(selErr.message);
 
-  const row = db.prepare('SELECT * FROM tbl_news_data WHERE link = ?').get(link);
-  res.json(row);
+    const now = new Date().toISOString();
+    let row;
+
+    if (!existing) {
+      const insertRow = {
+        link, headline, source, summary, news_api_id,
+        response:        coalesce(response, 0),
+        link_open:       coalesce(link_open, 0),
+        clicked_on_more: coalesce(clicked_on_more, 0),
+        live:            coalesce(live, 1),
+        news_date,
+        shown:           coalesce(shown, 0),
+        updated_at:      now,
+      };
+      const { data, error } = await supabase
+        .from('tbl_news_data').insert(insertRow).select().single();
+      if (error) throw new Error(error.message);
+      row = data;
+    } else {
+      const updateRow = {
+        headline, source, summary,
+        news_api_id:     coalesce(existing.news_api_id, news_api_id),
+        response:        coalesce(response, existing.response),
+        link_open:       coalesce(link_open, existing.link_open),
+        clicked_on_more: coalesce(clicked_on_more, existing.clicked_on_more),
+        live:            coalesce(live, existing.live),
+        news_date:       coalesce(existing.news_date, news_date),
+        shown:           coalesce(shown, existing.shown),
+        updated_at:      now,
+      };
+      const { data, error } = await supabase
+        .from('tbl_news_data').update(updateRow).eq('link', link).select().single();
+      if (error) throw new Error(error.message);
+      row = data;
+    }
+
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
