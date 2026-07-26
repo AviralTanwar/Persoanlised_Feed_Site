@@ -20,6 +20,9 @@ pnpm-debug.log*
 client/dist/
 client/.vite/
 
+# ─── Vercel ─────────────────────────────────────────────────
+.vercel/
+
 # ─── Python (legacy Streamlit app) ──────────────────────────
 venv/
 .venv/
