@@ -2,7 +2,9 @@
 
 A personal mission-control dashboard: year progress KPI, live weather, a data-driven news section (national + tech, more sources addable via SQLite), OneNote reader, YouTube viewer with per-video notes, a web page annotator, and an improvements tracker. Glass UI with animated aurora background, dark/light theme, and 3D hover effects.
 
-**Stack:** React 19 + Vite · Express + better-sqlite3 · OpenWeatherMap + Google News RSS
+**Stack:** React 19 + Vite · Express 5 (serverless on Vercel) · Supabase Postgres · OpenWeatherMap + Google News RSS
+
+> **Architecture:** the React client and the Express API deploy as **one Vercel project** (same origin — the client calls `/api/*` relatively). Data lives in **Supabase Postgres**, reached server-side via `@supabase/supabase-js` with the service-role key. Locally you run the same Express app with `node server/index.js` and the Vite dev server, both pointing at the same Supabase project.
 
 > **Do not use `axios`** - use native `fetch` instead. Axios was compromised in a supply chain attack.
 
@@ -29,8 +31,9 @@ A personal mission-control dashboard: year progress KPI, live weather, a data-dr
 | Layer | Technology |
 |---|---|
 | Frontend | React 19 · Vite 8 |
-| Backend | Node.js · Express 5 |
-| Database | better-sqlite3 (local at `server/db/dashboard.db`) |
+| Backend | Node.js · Express 5 (exported as a Vercel serverless function via `api/index.js`) |
+| Database | Supabase Postgres, via `@supabase/supabase-js` (service-role key, server-side only) |
+| Hosting | Vercel (one project serves both client and `/api/*`) |
 | HTTP | Native `fetch` - no axios |
 | APIs | OpenWeatherMap (weather) · Google News RSS (all news sources - no key, no quota) |
 
@@ -66,19 +69,35 @@ API Explorer Dashboard/
 │   │       └── Improvements.jsx # Full CRUD with SQLite backend
 │   └── vite.config.js           # Proxies /api → localhost:3001
 │
+├── api/
+│   └── index.js                 # Vercel serverless entry: re-exports server/app.js
+│
 ├── server/                      # Express API
-│   ├── index.js
-│   ├── db.js                    # better-sqlite3 setup + schema + migrations + seeds
-│   └── routes/
-│       ├── weather.js           # GET /api/weather             (OpenWeatherMap)
-│       ├── weatherCities.js     # GET/POST/DELETE /api/weather-cities (SQLite)
-│       ├── newsKpis.js          # GET /api/news-kpis           (live rows from tbl_news_kpi_data)
-│       ├── news.js              # GET /api/news/:kpiId         (fetches kpi.api_url, dedupes, caches 15min)
-│       ├── newsInteractions.js  # GET/POST /api/reactions      (tbl_news_data - like/dislike/open/more/live)
-│       ├── staticData.js        # GET /api/static/:key         (serves static/*.json)
-│       ├── webNotes.js          # GET/POST /api/web-notes      (SQLite)
-│       ├── improvements.js      # GET/POST/PATCH/DELETE /api/improvements (SQLite)
-│       └── quotes.js            # GET /api/quotes              (QUOTES_API_URL passthrough)
+│   ├── app.js                   # builds + EXPORTS the Express app (no listen) - used by both local + Vercel
+│   ├── index.js                 # LOCAL only: require('./app').listen(3001)
+│   ├── db.js                    # thin @supabase/supabase-js client (no schema/migrations/seeds)
+│   └── routes/                  # all async, all on Supabase:
+│       ├── weather.js           # /api/weather              (OpenWeatherMap; base URL from tbl_weathers)
+│       ├── weatherCities.js     # /api/weather-cities       (tbl_weathers_card)
+│       ├── newsKpis.js          # /api/news-kpis            (live rows from tbl_news_kpi_data)
+│       ├── news.js              # /api/news/:kpiId          (merges tbl_news_feeds, dedupes, 15min in-mem cache)
+│       ├── newsInteractions.js  # /api/reactions            (tbl_news_data upsert)
+│       ├── quotes.js            # /api/quotes/*             (tbl_quotes; proxies each source)
+│       ├── improvements.js      # /api/improvements         (tbl_improvements)
+│       ├── todoSummaries.js     # /api/todo-summaries       (tbl_to_do_summary)
+│       ├── todos.js             # /api/todos                (tbl_to_do)
+│       ├── notes.js             # /api/notes                (tbl_notes + tbl_notes_data)
+│       ├── onenote.js           # /api/onenote              (tbl_onenote_pages)
+│       ├── viewKpis.js          # /api/view-kpis            (tbl_view_kpi)
+│       ├── userInfo.js          # /api/user-info            (tbl_user_info)
+│       ├── credentials.js       # /api/credentials/verify   (bcrypt against tbl_credentials)
+│       ├── webPageDownloads.js  # /api/web-page-downloads   (PDF BYTEA in tbl_web_pge_downloads)
+│       ├── proxy.js             # /api/proxy                (outbound page proxy - no DB)
+│       └── staticData.js        # /api/static/:key          (serves static/*.json - no DB)
+│
+├── supabase/
+│   ├── schema.sql               # run first in the Supabase SQL editor
+│   └── seed.sql                 # run second (baseline data, idempotent)
 │
 ├── static/                      # Edit these to personalise your dashboard
 │   ├── config.json              # Misc config
@@ -97,16 +116,18 @@ API Explorer Dashboard/
 
 ## Running Locally
 
-You need **two terminals** open simultaneously.
+You need a **Supabase project** (see [Deployment](#deployment) step 1–2 to create it and load the schema), then **two terminals**.
 
 ### 1. Install dependencies
 
+Server runtime deps live in the **repo-root** `package.json` now (so Vercel can resolve them). Install once at the root, plus the client:
+
 ```bash
-cd server && npm install && cd ..
+npm install            # repo root - installs express, @supabase/supabase-js, etc.
 cd client && npm install && cd ..
 ```
 
-### 2. Set up API keys
+### 2. Set up env vars
 
 ```bash
 copy .env.example server\.env
@@ -115,11 +136,12 @@ copy .env.example server\.env
 Edit `server/.env`:
 
 ```env
-OPENWEATHER_API_KEY=your_key    # openweathermap.org → free signup
-QUOTES_API_URL=...              # any quotes API - default works out of the box
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...       # Project Settings → API → service_role (server-side only!)
+OPENWEATHER_API_KEY=your_key           # openweathermap.org → free signup
 ```
 
-> News needs **no API key** - it pulls Google News RSS feeds directly. `NEWS_API_KEY` in `.env.example` is a legacy leftover from before the switch; safe to leave blank or delete.
+> News, quotes, and the weather API URL all live in the database (`tbl_news_feeds` / `tbl_quotes` / `tbl_weathers`), so there are no `NEWS_API_KEY`, `QUOTES_API_URL`, or `MS_*` variables anymore.
 
 ### 3. Customise your data
 
@@ -159,6 +181,35 @@ Open `http://localhost:5173`. Vite proxies all `/api` calls to the server.
 
 ---
 
+## Deployment
+
+Deployed as **one Vercel project** (client + API, same origin) backed by **Supabase Postgres**.
+
+### 1. Create the Supabase project
+- supabase.com → New project. Note the **Project URL** and the **service_role key** (Project Settings → API).
+
+### 2. Load the schema + seed
+- Supabase → SQL Editor → paste and run **`supabase/schema.sql`**, then **`supabase/seed.sql`** (in that order).
+- This creates all tables and the baseline data. It does **not** migrate your existing local SQLite data — move any saved improvements / to-dos / notes / custom cities by hand if you want them in prod.
+
+### 3. Connect the repo to Vercel
+- Vercel → New Project → import this Git repo. `vercel.json` already sets the build (`cd client && npm install && npm run build`), the output dir (`client/dist`), and the `/api/(.*) → /api` rewrite. Root `package.json` provides the serverless function's dependencies.
+
+### 4. Set environment variables (Vercel → Settings → Environment Variables)
+Because `.env` is gitignored, add these in the dashboard for Production (and Preview if you use it):
+
+| Variable | Value |
+|---|---|
+| `SUPABASE_URL` | your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role key — **never** prefix with `VITE_` |
+| `OPENWEATHER_API_KEY` | your OpenWeatherMap key |
+
+Deploy. The client calls `/api/*` relatively, so no client-side URL config is needed.
+
+> **Known limitation:** the Web Pages proxy (`/api/proxy`) uses outbound fetches up to 20s; Vercel Hobby functions cap at ~10s, so proxying slow sites may time out in production even though it works locally.
+
+---
+
 ## Security Folder
 
 `security/` is **gitignored** - nothing inside it will ever be committed. Store here:
@@ -170,16 +221,28 @@ Open `http://localhost:5173`. Vite proxies all `/api` calls to the server.
 
 ## Database
 
-SQLite auto-created at `server/db/dashboard.db` on first run. `db.js` migrates the schema forward automatically on every server start (renames, new columns, new tables) - just restart the backend after pulling changes.
+**Supabase Postgres.** The schema is applied by hand once from `supabase/schema.sql`, then baseline data from `supabase/seed.sql` — there are **no runtime migrations** (serverless has no startup to run them on). All access is server-side through the service-role key, which bypasses Row Level Security; RLS is left enabled with no policies so the anon key gets zero access.
 
 | Table | What it holds |
 |---|---|
-| `tbl_news_kpi_data` | News source registry - one row per panel shown in the News section. `live` controls whether it renders; `api_url` is what gets fetched |
-| `tbl_news_data` | Every article ever shown, tagged by `news_api_id` (which KPI it came from). Tracks `response` (like/dislike/skip), `link_open`, `clicked_on_more`, `live` (currently on screen or not), `news_date` (real publish date), `shown` (most recent interaction code) |
-| `improvement_notes` | Goals with title, detail, priority, status |
-| `weathers` | Weather cities - permanent flag, soft-delete via `deleted_at` |
-| `web_notes` | Per-page notes for the Web Pages viewer |
-| `notes`, `highlights`, `interactions` | Legacy tables, currently unused by any route |
+| `tbl_news_kpi_data` | News source registry - one row per News panel. `live` controls rendering |
+| `tbl_news_feeds` | RSS feed URLs per news KPI (many feeds → one KPI); the News panel merges them |
+| `tbl_news_data` | Every article ever shown, tagged by `news_api_id`. Tracks `response`, `link_open`, `clicked_on_more`, `live`, `news_date`, `shown` |
+| `tbl_view_kpi` | Dashboard section registry - order (`rank`) + visibility of each section |
+| `tbl_quotes` | Hero-band quote sources (motivational / developer), each with title, logo, color, api |
+| `tbl_notes`, `tbl_notes_data` | Web-page / YouTube / improvement note wrappers + their content entries |
+| `tbl_to_do_summary`, `tbl_to_do` | Kanban boards and their task cards |
+| `tbl_web_pge_downloads` | Uploaded PDFs stored inline as `BYTEA` |
+| `tbl_improvements` | Improvements & feedback tracker (status incl. `hold`, plus a `remark`) |
+| `tbl_weathers_card` | Weather cities (permanent flag, soft-delete) |
+| `tbl_weathers` | Weather API source URL the server proxies |
+| `tbl_user_info` | Single-row user profile (name, timezone offset, etc.) |
+| `tbl_credentials` | bcrypt hash for the to-do unlock |
+| `tbl_onenote_pages` | OneNote-style scratchpad pages |
+
+**Two `deleted_at` conventions are preserved from the original SQLite schema:** most `tbl_*` tables use the string sentinel `'0000-00-00 00:00:00'` (kept as `TEXT`, since that string is not a valid Postgres timestamp), while `tbl_news_data`, `tbl_weathers_card`, and `tbl_news_kpi_data` use `NULL` (kept as `TIMESTAMPTZ`). 0/1 flag columns are kept as `SMALLINT` (not `BOOLEAN`) so existing server logic and client `=== 1` checks keep working.
+
+> The legacy `notes`, `highlights`, `interactions`, and `web_notes` tables from earlier versions are **not** recreated in Postgres — no route uses them.
 
 ---
 
@@ -215,11 +278,12 @@ All colours are CSS custom properties defined in `client/src/index.css`:
 - [x] Year progress KPI card
 - [x] Switched all news sources from NewsAPI to Google News RSS (no key, no quota, real-time)
 - [x] News section generalized to a data-driven KPI registry (`tbl_news_kpi_data`) - panels are config, not code
+- [x] Migrated SQLite → Supabase Postgres (all routes on `@supabase/supabase-js`)
+- [x] Restructured for single-project Vercel deploy (client + API same origin)
+- [ ] Move the news RSS cache from in-memory into Postgres (Phase 3 — needed for serverless)
+- [ ] Daily keep-alive cron so Supabase free tier doesn't pause (Phase 4)
 - [ ] Admin UI for managing news KPIs (currently DB-only)
 - [ ] Real OneNote via Microsoft Graph API
-- [ ] Deploy backend on Railway / Render
-- [ ] Deploy frontend on Vercel
-- [ ] Switch SQLite → CockroachDB
 
 ---
 
